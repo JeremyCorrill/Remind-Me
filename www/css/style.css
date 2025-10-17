@@ -1,29 +1,181 @@
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
-    background-color: #f5f5f5;
-}
-
-h1, h2 {
+    background-color: #f4f4f9;
     color: #333;
 }
 
-button {
-    margin: 10px;
+h1 {
+    text-align: center;
+    color: #4CAF50;
+}
+
+/* Mode buttons styling */
+#modes {
+    text-align: center;
+    margin: 20px 0;
+}
+
+#modes button {
+    margin: 5px;
     padding: 10px 15px;
-    font-size: 16px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
     cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
 }
 
-#tasks ul {
-    list-style: none;
+#modes button:hover {
+    background-color: #1976D2;
+}
+
+label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+}
+
+input, button {
+    padding: 8px;
+    margin-top: 5px;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+button {
+    margin-top: 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+ul {
+    max-width: 600px;
+    margin: 0 auto;
     padding-left: 0;
+    list-style: none;
 }
 
-#tasks li {
-    background: #fff;
-    margin: 5px 0;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 0 3px #ccc;
+li {
+    margin-bottom: 12px;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+    box-shadow: 0px 2px 4px rgba(0,0,0,0.05);
+}
+
+.reminder-info {
+    flex-grow: 1;
+}
+
+.reminder-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.reminder-actions button {
+    margin: 0;
+    padding: 6px 10px;
+    font-size: 12px;
+    width: auto;
+}
+
+.reminder-actions button:nth-child(1) {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.reminder-actions button:nth-child(1):hover {
+    background-color: #45a049;
+}
+
+.reminder-actions button:nth-child(2) {
+    background-color: #2196F3;
+    color: white;
+}
+
+.reminder-actions button:nth-child(2):hover {
+    background-color: #1976D2;
+}
+
+.reminder-actions button:nth-child(3) {
+    background-color: #f44336;
+    color: white;
+}
+
+.reminder-actions button:nth-child(3):hover {
+    background-color: #d32f2f;
+}
+
+/* Modal overlay */
+#editModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+/* Modal content box */
+#editModal .modal-content {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+#editModal h3 {
+    margin-top: 0;
+}
+
+/* Buttons inside modal */
+#editModal .modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+#editModal .modal-buttons button {
+    padding: 8px 16px;
+    cursor: pointer;
+    width: auto;
+    margin: 0;
+}
+
+#cancelEditBtn {
+    background-color: #9e9e9e;
+}
+
+#cancelEditBtn:hover {
+    background-color: #757575;
 }

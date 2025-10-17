@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Reminder App</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" type="text/css" href="css/style.css">
 </head>
 
 <body>
@@ -25,125 +25,35 @@
 <label for="text">Reminder Text:</label>
 <input type="text" id="text" placeholder="Enter reminder text">
 
-<label for="time">Time from now (seconds):</label>
-<input type="number" id="time" placeholder="e.g., 10">
+<label for="datetime">Due Date & Time:</label>
+<input type="datetime-local" id="datetime">
 
 <button id="scheduleBtn">Schedule Reminder</button>
 
 <h2>Scheduled Reminders</h2>
 <ul id="reminderList"></ul>
 
-<script src="cordova.js"></script>
-<script src="index.js"></script>
-<script>
-    const reminderListEl = document.getElementById('reminderList');
+<!-- Edit Modal -->
+<div id="editModal">
+    <div class="modal-content">
+        <h3>Edit Reminder</h3>
+        <label for="editTitle">Title:</label>
+        <input type="text" id="editTitle">
 
-    document.addEventListener('deviceready', onDeviceReady, false);
+        <label for="editText">Text:</label>
+        <input type="text" id="editText">
 
-    function onDeviceReady() {
-        console.log('Cordova ready!');
+        <label for="editDatetime">Due Date & Time:</label>
+        <input type="datetime-local" id="editDatetime">
 
-        // Load existing reminders on start
-        loadReminders();
+        <div class="modal-buttons">
+            <button id="cancelEditBtn">Cancel</button>
+            <button id="saveEditBtn">Save</button>
+        </div>
+    </div>
+</div>
 
-        document.getElementById('scheduleBtn').addEventListener('click', scheduleReminder);
-
-        // Listen for notification clicks
-        cordova.plugins.notification.local.on('click', function(notification) {
-            alert('You clicked the notification: ' + notification.text);
-        });
-    }
-
-    function scheduleReminder() {
-        const title = document.getElementById('title').value;
-        const text = document.getElementById('text').value;
-        const time = parseInt(document.getElementById('time').value, 10);
-
-        if (!title || !text || isNaN(time)) {
-            alert('Please fill in all fields correctly.');
-            return;
-        }
-
-        const id = Date.now();
-
-        cordova.plugins.notification.local.schedule({
-            id: id,
-            title: title,
-            text: text,
-            trigger: { in: time, unit: 'second' },
-            foreground: true
-        });
-
-        saveReminder({ id, title, text, time });
-        addReminderToList({ id, title, text, time });
-
-        // Clear inputs
-        document.getElementById('title').value = '';
-        document.getElementById('text').value = '';
-        document.getElementById('time').value = '';
-    }
-
-    function saveReminder(reminder) {
-        let reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
-        reminders.push(reminder);
-        localStorage.setItem('reminders', JSON.stringify(reminders));
-    }
-
-    function loadReminders() {
-        let reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
-        reminders.forEach(addReminderToList);
-    }
-
-    function addReminderToList(reminder) {
-        const li = document.createElement('li');
-        li.id = 'reminder-' + reminder.id;
-
-        const info = document.createElement('div');
-        info.className = 'reminder-info';
-        info.textContent = `${reminder.title} — "${reminder.text}" in ${reminder.time}s`;
-
-        const actions = document.createElement('div');
-        actions.className = 'reminder-actions';
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete';
-        deleteBtn.onclick = () => deleteReminder(reminder.id, li);
-
-        const editBtn = document.createElement('button');
-        editBtn.textContent = 'Edit';
-        editBtn.className = 'edit';
-        editBtn.onclick = () => editReminder(reminder);
-
-        actions.appendChild(editBtn);
-        actions.appendChild(deleteBtn);
-
-        li.appendChild(info);
-        li.appendChild(actions);
-        reminderListEl.appendChild(li);
-    }
-
-    function deleteReminder(id, li) {
-        cordova.plugins.notification.local.cancel(id, () => {
-            console.log(`Notification ${id} canceled.`);
-        });
-
-        let reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
-        reminders = reminders.filter(r => r.id !== id);
-        localStorage.setItem('reminders', JSON.stringify(reminders));
-
-        li.remove();
-    }
-
-    function editReminder(reminder) {
-        // Fill inputs with current reminder data
-        document.getElementById('title').value = reminder.title;
-        document.getElementById('text').value = reminder.text;
-        document.getElementById('time').value = reminder.time;
-
-        // Delete old reminder
-        const oldLi = document.getElementById('reminder-' + reminder.id);
-        deleteReminder(reminder.id, oldLi);
-    }
-</script>
+<script type="text/javascript" src="cordova.js"></script>
+<script type="text/javascript" src="js/index.js"></script>
 </body>
 </html>
