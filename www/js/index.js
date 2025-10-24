@@ -73,7 +73,7 @@ function scheduleReminder() {
     const title = document.getElementById('title').value.trim();
     const text = document.getElementById('text').value.trim();
     const datetimeStr = document.getElementById('datetime').value;
-    const repeatMinutes = parseInt(document.getElementById('repeatInterval').value);
+    const repeat = document.getElementById('repeatInterval').value;
 
     if (!title || !text || !datetimeStr) {
         alert('Please fill in all fields.');
@@ -89,14 +89,13 @@ function scheduleReminder() {
     const id = Date.now();
 
     try {
+        const trigger = repeat ? { every: repeat, firstAt: datetime } : { at: datetime };
+
         cordova.plugins.notification.local.schedule({
             id,
             title,
             text,
-            trigger: {
-                at: datetime,
-                every: repeatMinutes > 0 ? { minute: repeatMinutes } : undefined
-            },
+            trigger: trigger,
             foreground: true
         });
 
@@ -105,10 +104,9 @@ function scheduleReminder() {
             title,
             text,
             datetime: datetime.toISOString(),
-            repeatMinutes: repeatMinutes || 0,
+            repeat: repeat || '',
             completed: false,
-            completedAt: null,
-            comment: ''
+            completedAt: null
         };
 
         reminders.push(reminder);
@@ -134,7 +132,7 @@ function addReminderToList(reminder) {
     info.className = 'reminder-info';
     const datetime = new Date(reminder.datetime);
     info.textContent = `${reminder.title} — "${reminder.text}" at ${datetime.toLocaleString()}` +
-        (reminder.repeatMinutes > 0 ? ` (Repeats every ${reminder.repeatMinutes} min)` : '');
+        (reminder.repeat ? ` (Repeats every ${reminder.repeat})` : '');
 
     const actions = document.createElement('div');
     actions.className = 'reminder-actions';
@@ -218,19 +216,16 @@ function renderCompletedReminders() {
             const info = document.createElement('div');
             info.className = 'completed-info';
             info.innerHTML = `
-                    <strong>${reminder.title}</strong><br>
-                    ${reminder.text}<br>
-                    <small>Generated at: ${new Date(reminder.datetime).toLocaleString()}</small><br>
-                    <small>Completed at: ${new Date(reminder.completedAt).toLocaleTimeString()}</small>
-                `;
+                <strong>${reminder.title}</strong><br>
+                ${reminder.text}<br>
+                <small>Generated at: ${new Date(reminder.datetime).toLocaleString()}</small><br>
+                <small>Completed at: ${new Date(reminder.completedAt).toLocaleTimeString()}</small>
+            `;
 
-            // Comment icon
             const commentIcon = document.createElement('span');
             commentIcon.classList.add('comment-icon');
             commentIcon.textContent = '💬';
-            commentIcon.style.cursor = 'pointer';
 
-            // Comment box
             const commentBox = document.createElement('textarea');
             commentBox.classList.add('comment-box');
             commentBox.style.display = 'none';
@@ -253,7 +248,6 @@ function renderCompletedReminders() {
         container.appendChild(daySection);
     });
 
-    // Collapsible toggle
     container.querySelectorAll('.collapsible').forEach(btn => {
         btn.onclick = function () {
             this.classList.toggle('active');
@@ -283,7 +277,7 @@ function openEditModal(reminder) {
     document.getElementById('editTitle').value = reminder.title;
     document.getElementById('editText').value = reminder.text;
     document.getElementById('editDatetime').value = reminder.datetime.slice(0, 16);
-    document.getElementById('editRepeatInterval').value = reminder.repeatMinutes || '';
+    document.getElementById('editRepeatInterval').value = reminder.repeat || '';
     document.getElementById('editModal').style.display = 'flex';
 }
 
@@ -293,7 +287,7 @@ function saveEdit() {
     const title = document.getElementById('editTitle').value.trim();
     const text = document.getElementById('editText').value.trim();
     const datetimeStr = document.getElementById('editDatetime').value;
-    const repeatMinutes = parseInt(document.getElementById('editRepeatInterval').value);
+    const repeat = document.getElementById('editRepeatInterval').value;
 
     if (!title || !text || !datetimeStr) {
         alert('Please fill in all fields.');
@@ -307,30 +301,38 @@ function saveEdit() {
     }
 
     try {
+        // Cancel existing notification
         cordova.plugins.notification.local.cancel(editingReminder.id);
+
+        // Proper trigger for Android repeating notifications
+        const trigger = repeat ? { every: repeat, firstAt: datetime } : { at: datetime };
+
+        // Reschedule notification
         cordova.plugins.notification.local.schedule({
             id: editingReminder.id,
             title,
             text,
-            trigger: {
-                at: datetime,
-                every: repeatMinutes > 0 ? { minute: repeatMinutes } : undefined
-            },
+            trigger: trigger,
             foreground: true
         });
 
+        // Update reminder object
         editingReminder.title = title;
         editingReminder.text = text;
         editingReminder.datetime = datetime.toISOString();
-        editingReminder.repeatMinutes = repeatMinutes || 0;
+        editingReminder.repeat = repeat || '';
 
+        // Update local storage
         updateReminder(editingReminder);
 
+        // Update UI
         const li = document.getElementById('reminder-' + editingReminder.id);
         if (li) {
             const infoDiv = li.querySelector('.reminder-info');
-            infoDiv.textContent = `${title} — "${text}" at ${datetime.toLocaleString()}` +
-                (editingReminder.repeatMinutes > 0 ? ` (Repeats every ${editingReminder.repeatMinutes} min)` : '');
+            let infoText = `${title} — "${text}" at ${datetime.toLocaleString()}`;
+            if (editingReminder.repeat)
+                infoText += ` (Repeats every ${editingReminder.repeat})`;
+            infoDiv.textContent = infoText;
         }
 
         document.getElementById('editModal').style.display = 'none';
@@ -340,6 +342,7 @@ function saveEdit() {
         alert('Failed to update reminder. Please try again.');
     }
 }
+
 
 function cancelEdit() {
     document.getElementById('editModal').style.display = 'none';

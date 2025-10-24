@@ -28,8 +28,17 @@
 <label for="datetime">Due Date & Time:</label>
 <input type="datetime-local" id="datetime">
 
-<label for="repeatInterval">Repeat every (minutes, optional):</label>
-<input type="number" id="repeatInterval" placeholder="Enter minutes">
+<label for="repeatInterval">Repeat:</label>
+<select id="repeatInterval">
+    <option value="">None</option>
+    <option value="minute">Every Minute</option>
+    <option value="hour">Every Hour</option>
+    <option value="day">Every Day</option>
+    <option value="week">Every Week</option>
+    <option value="month">Every Month</option>
+    <option value="year">Every Year</option>
+</select>
+
 
 <button id="scheduleBtn">Schedule Reminder</button>
 
@@ -49,8 +58,16 @@
         <label for="editDatetime">Due Date & Time:</label>
         <input type="datetime-local" id="editDatetime">
 
-        <label for="editRepeatInterval">Repeat every (minutes, optional):</label>
-        <input type="number" id="editRepeatInterval" placeholder="Enter minutes">
+        <label for="editRepeatInterval">Repeat:</label>
+        <select id="editRepeatInterval">
+            <option value="">None</option>
+            <option value="minute">Every Minute</option>
+            <option value="hour">Every Hour</option>
+            <option value="day">Every Day</option>
+            <option value="week">Every Week</option>
+            <option value="month">Every Month</option>
+            <option value="year">Every Year</option>
+        </select>
 
         <div class="modal-buttons">
             <button id="cancelEditBtn">Cancel</button>
