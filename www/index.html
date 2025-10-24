@@ -28,6 +28,9 @@
 <label for="datetime">Due Date & Time:</label>
 <input type="datetime-local" id="datetime">
 
+<label for="repeatInterval">Repeat every (minutes, optional):</label>
+<input type="number" id="repeatInterval" placeholder="Enter minutes">
+
 <button id="scheduleBtn">Schedule Reminder</button>
 
 <h2>Scheduled Reminders</h2>
@@ -46,11 +49,22 @@
         <label for="editDatetime">Due Date & Time:</label>
         <input type="datetime-local" id="editDatetime">
 
+        <label for="editRepeatInterval">Repeat every (minutes, optional):</label>
+        <input type="number" id="editRepeatInterval" placeholder="Enter minutes">
+
         <div class="modal-buttons">
             <button id="cancelEditBtn">Cancel</button>
             <button id="saveEditBtn">Save</button>
         </div>
     </div>
+</div>
+
+<h2>
+    Completed Reminders
+    <button id="toggleCompletedBtn" class="collapse-btn">Show</button>
+</h2>
+<div id="completedReminders" class="collapsed">
+    <!-- Completed reminders grouped by day will go here -->
 </div>
 
 <script type="text/javascript" src="cordova.js"></script>

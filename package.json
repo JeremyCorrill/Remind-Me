@@ -16,16 +16,19 @@
   "license": "Apache-2.0",
   "devDependencies": {
     "cordova-android": "^14.0.1",
-    "cordova-plugin-local-notifications": "file:../Downloads/cordova-plugin-local-notifications-master/cordova-plugin-local-notifications-master"
+    "cordova-plugin-device": "^3.0.0",
+    "cordova-plugin-local-notification": "^1.2.2"
   },
   "cordova": {
-    "platforms": [],
+    "platforms": [
+      "android"
+    ],
     "plugins": {
       "cordova-plugin-badge": {},
       "cordova-plugin-device": {},
       "cordova-plugin-dialogs": {},
       "cordova-plugin-file": {},
-      "cordova-plugin-local-notifications": {}
+      "cordova-plugin-local-notification": {}
     }
   }
 }
