@@ -8,47 +8,125 @@
 </head>
 
 <body>
-<h1>Reminder App</h1>
+<!-- HOMEPAGE VIEW - Mode Selection -->
+<div id="homepageView" class="view active">
+    <h1>Welcome to Reminder App</h1>
+    <p class="subtitle">Choose your mode to get started</p>
 
-<!-- Placeholder Modes -->
-<div id="modes">
-    <button onclick="alert('Work Mode coming soon!')">Work Mode</button>
-    <button onclick="alert('ADHD Mode coming soon!')">ADHD Mode</button>
-    <button onclick="alert('Memory/Caregiver Mode coming soon!')">Memory/Caregiver Mode</button>
+    <div class="mode-selection">
+        <div class="mode-card" onclick="selectMode('work')">
+            <div class="mode-icon">💼</div>
+            <h2>Work Mode</h2>
+            <p>Professional task management with customizable notifications and project tracking</p>
+            <ul class="mode-features">
+                <li>Customizable reminder delivery</li>
+                <li>Project-based organization</li>
+                <li>Collaboration features</li>
+                <li>Progress tracking</li>
+            </ul>
+        </div>
+
+        <div class="mode-card" onclick="selectMode('adhd')">
+            <div class="mode-icon">⚡</div>
+            <h2>ADHD Mode</h2>
+            <p>Focus-friendly design with escalating reminders and positive reinforcement</p>
+            <ul class="mode-features">
+                <li>Escalating reminders</li>
+                <li>Celebration animations</li>
+                <li>Color-coded priorities</li>
+                <li>Streak tracking</li>
+            </ul>
+        </div>
+
+        <div class="mode-card" onclick="selectMode('memory')">
+            <div class="mode-icon">🧠</div>
+            <h2>Memory/Caregiver Mode</h2>
+            <p>Supportive reminders with photos, voice cues, and caregiver connection</p>
+            <ul class="mode-features">
+                <li>Photo + voice reminders</li>
+                <li>Large text display</li>
+                <li>Caregiver oversight</li>
+                <li>Auto-replay prompts</li>
+            </ul>
+        </div>
+    </div>
 </div>
-<hr>
 
-<!-- Reminder Inputs -->
-<label for="title">Reminder Title:</label>
-<input type="text" id="title" placeholder="Enter title">
+<!-- MAIN APP VIEW - Hidden by default -->
+<div id="mainAppView" class="view">
+    <div class="header">
+        <h1 id="modeTitle">Reminder App</h1>
+        <button class="settings-btn" onclick="showSettings()">⚙️</button>
+    </div>
 
-<label for="text">Reminder Text:</label>
-<input type="text" id="text" placeholder="Enter reminder text">
+    <!-- Reminder Input Section -->
+    <div class="input-section">
+        <label for="title">Reminder Title:</label>
+        <input type="text" id="title" placeholder="Enter title">
 
-<label for="datetime">Due Date & Time:</label>
-<input type="datetime-local" id="datetime">
+        <label for="text">Reminder Text:</label>
+        <input type="text" id="text" placeholder="Enter reminder text">
 
-<label for="repeatInterval">Repeat:</label>
-<select id="repeatInterval">
-    <option value="">None</option>
-    <option value="minute">Every Minute</option>
-    <option value="hour">Every Hour</option>
-    <option value="day">Every Day</option>
-    <option value="week">Every Week</option>
-    <option value="month">Every Month</option>
-    <option value="year">Every Year</option>
-</select>
+        <label for="datetime">Due Date & Time:</label>
+        <input type="datetime-local" id="datetime">
 
+        <label for="repeatInterval">Repeat every (minutes, optional):</label>
+        <input type="number" id="repeatInterval" placeholder="Enter minutes">
 
-<button id="scheduleBtn">Schedule Reminder</button>
+        <!-- Priority selector (visible in ADHD/Work modes) -->
+        <div id="prioritySection" style="display: none;">
+            <label for="priority">Priority:</label>
+            <select id="priority">
+                <option value="low">Low Priority</option>
+                <option value="medium" selected>Medium Priority</option>
+                <option value="high">High Priority</option>
+            </select>
+        </div>
 
-<h2>Scheduled Reminders</h2>
-<ul id="reminderList"></ul>
+        <!-- Photo/Voice options (visible in Memory mode) -->
+        <div id="memoryOptions" style="display: none;">
+            <label for="photoUpload">Add Photo (optional):</label>
+            <input type="file" id="photoUpload" accept="image/*">
 
-<!-- Edit Modal -->
-<div id="editModal">
+            <label for="voiceNote">Voice Note (optional):</label>
+            <button id="recordVoiceBtn" type="button">🎤 Record Voice Note</button>
+        </div>
+
+        <button id="scheduleBtn">Schedule Reminder</button>
+    </div>
+
+    <!-- Active Reminders List -->
+    <h2>Scheduled Reminders</h2>
+    <ul id="reminderList"></ul>
+
+    <!-- Completed Today Section -->
+    <div id="completedSection" style="display: none;">
+        <h2>Completed Today ✅</h2>
+        <ul id="completedList"></ul>
+    </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <h3>Settings</h3>
+
+        <label>Current Mode:</label>
+        <p id="currentMode" style="font-weight: bold; margin-bottom: 15px;">None</p>
+
+        <button onclick="changeMode()" class="change-mode-btn">Change Mode</button>
+
+        <div class="modal-buttons">
+            <button onclick="closeSettings()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT REMINDER MODAL -->
+<div id="editModal" class="modal">
     <div class="modal-content">
         <h3>Edit Reminder</h3>
+
         <label for="editTitle">Title:</label>
         <input type="text" id="editTitle">
 
@@ -58,16 +136,17 @@
         <label for="editDatetime">Due Date & Time:</label>
         <input type="datetime-local" id="editDatetime">
 
-        <label for="editRepeatInterval">Repeat:</label>
-        <select id="editRepeatInterval">
-            <option value="">None</option>
-            <option value="minute">Every Minute</option>
-            <option value="hour">Every Hour</option>
-            <option value="day">Every Day</option>
-            <option value="week">Every Week</option>
-            <option value="month">Every Month</option>
-            <option value="year">Every Year</option>
-        </select>
+        <label for="editRepeatInterval">Repeat every (minutes, optional):</label>
+        <input type="number" id="editRepeatInterval" placeholder="Enter minutes">
+
+        <div id="editPrioritySection" style="display: none;">
+            <label for="editPriority">Priority:</label>
+            <select id="editPriority">
+                <option value="low">Low Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="high">High Priority</option>
+            </select>
+        </div>
 
         <div class="modal-buttons">
             <button id="cancelEditBtn">Cancel</button>
@@ -76,15 +155,21 @@
     </div>
 </div>
 
-<h2>
-    Completed Reminders
-    <button id="toggleCompletedBtn" class="collapse-btn">Show</button>
-</h2>
-<div id="completedReminders" class="collapsed">
-    <!-- Completed reminders grouped by day will go here -->
+<!-- CELEBRATION MODAL (ADHD Mode) -->
+<div id="celebrationModal" class="modal celebration-modal">
+    <div class="modal-content celebration-content">
+        <div class="confetti">🎉</div>
+        <h2>Amazing Work!</h2>
+        <p id="celebrationMessage">You completed a task!</p>
+        <button onclick="closeCelebration()">Continue</button>
+    </div>
 </div>
 
+<!-- Cordova Scripts -->
 <script type="text/javascript" src="cordova.js"></script>
 <script type="text/javascript" src="js/index.js"></script>
+<script type="text/javascript" src="js/work.js"></script>
+<script type="text/javascript" src="js/adhd.js"></script>
+<script type="text/javascript" src="js/memory.js"></script>
 </body>
 </html>
