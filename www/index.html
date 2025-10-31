@@ -14,7 +14,7 @@
     <p class="subtitle">Choose your mode to get started</p>
 
     <div class="mode-selection">
-        <div class="mode-card" onclick="selectMode('work')">
+        <div class="mode-card" data-mode="work">
             <div class="mode-icon">💼</div>
             <h2>Work Mode</h2>
             <p>Professional task management with customizable notifications and project tracking</p>
@@ -26,7 +26,7 @@
             </ul>
         </div>
 
-        <div class="mode-card" onclick="selectMode('adhd')">
+        <div class="mode-card" data-mode="adhd">
             <div class="mode-icon">⚡</div>
             <h2>ADHD Mode</h2>
             <p>Focus-friendly design with escalating reminders and positive reinforcement</p>
@@ -38,7 +38,7 @@
             </ul>
         </div>
 
-        <div class="mode-card" onclick="selectMode('memory')">
+        <div class="mode-card" data-mode="memory">
             <div class="mode-icon">🧠</div>
             <h2>Memory/Caregiver Mode</h2>
             <p>Supportive reminders with photos, voice cues, and caregiver connection</p>
@@ -52,57 +52,225 @@
     </div>
 </div>
 
-<!-- MAIN APP VIEW - Hidden by default -->
+<!-- MAIN APP VIEW -->
 <div id="mainAppView" class="view">
-    <div class="header">
-        <h1 id="modeTitle">Reminder App</h1>
-        <button class="settings-btn" onclick="showSettings()">⚙️</button>
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+        <button class="nav-tab active" data-tab="reminders">📋 Reminders</button>
+        <button class="nav-tab" data-tab="completed">✅ Completed</button>
+        <button class="nav-tab" data-tab="analytics">📊 Analytics</button>
+        <button class="settings-btn-tab" id="settingsBtnTab">⚙️</button>
     </div>
 
-    <!-- Reminder Input Section -->
-    <div class="input-section">
-        <label for="title">Reminder Title:</label>
-        <input type="text" id="title" placeholder="Enter title">
+    <!-- REMINDERS TAB -->
+    <div id="remindersTab" class="tab-content active">
+        <div class="header">
+            <h1 id="modeTitle">Reminder App</h1>
+            <div class="header-actions">
+                <button class="icon-btn" id="filterBtn" title="Filter">🔍</button>
+                <button class="icon-btn" id="exportBtn" title="Export">📥</button>
+            </div>
+        </div>
 
-        <label for="text">Reminder Text:</label>
-        <input type="text" id="text" placeholder="Enter reminder text">
-
-        <label for="datetime">Due Date & Time:</label>
-        <input type="datetime-local" id="datetime">
-
-        <label for="repeatInterval">Repeat every (minutes, optional):</label>
-        <input type="number" id="repeatInterval" placeholder="Enter minutes">
-
-        <!-- Priority selector (visible in ADHD/Work modes) -->
-        <div id="prioritySection" style="display: none;">
-            <label for="priority">Priority:</label>
-            <select id="priority">
-                <option value="low">Low Priority</option>
-                <option value="medium" selected>Medium Priority</option>
+        <!-- Filter Section -->
+        <div id="filterSection" class="filter-section" style="display: none;">
+            <h3>Filter Reminders</h3>
+            <select id="filterPriority" onchange="applyFilters()">
+                <option value="all">All Priorities</option>
                 <option value="high">High Priority</option>
+                <option value="medium">Medium Priority</option>
+                <option value="low">Low Priority</option>
             </select>
+            <select id="filterProject" onchange="applyFilters()">
+                <option value="all">All Projects</option>
+            </select>
+            <button onclick="clearFilters()">Clear Filters</button>
         </div>
 
-        <!-- Photo/Voice options (visible in Memory mode) -->
-        <div id="memoryOptions" style="display: none;">
-            <label for="photoUpload">Add Photo (optional):</label>
-            <input type="file" id="photoUpload" accept="image/*">
+        <!-- Reminder Input Section -->
+        <div class="input-section">
+            <h2>Create New Reminder</h2>
 
-            <label for="voiceNote">Voice Note (optional):</label>
-            <button id="recordVoiceBtn" type="button">🎤 Record Voice Note</button>
+            <label for="title">Title:</label>
+            <input type="text" id="title" placeholder="Enter title">
+
+            <label for="text">Description:</label>
+            <textarea id="text" placeholder="Enter reminder details" rows="3"></textarea>
+
+            <label for="datetime">Due Date & Time:</label>
+            <input type="datetime-local" id="datetime">
+
+            <!-- Work Mode: Project Selection -->
+            <div id="projectSection" style="display: none;">
+                <label for="project">Project:</label>
+                <select id="project">
+                    <option value="none">No Project</option>
+                    <option value="work">Work</option>
+                    <option value="personal">Personal</option>
+                    <option value="urgent">Urgent</option>
+                </select>
+            </div>
+
+            <!-- Priority selector (Work/ADHD modes) -->
+            <div id="prioritySection" style="display: none;">
+                <label for="priority">Priority:</label>
+                <select id="priority">
+                    <option value="low">Low Priority</option>
+                    <option value="medium" selected>Medium Priority</option>
+                    <option value="high">High Priority</option>
+                </select>
+            </div>
+
+            <label for="repeatInterval">Repeat every (minutes, optional):</label>
+            <input type="number" id="repeatInterval" placeholder="Leave blank for one-time reminder">
+
+            <!-- ADHD Mode: Escalation Settings -->
+            <div id="adhdEscalation" style="display: none;">
+                <label for="escalationLevel">Escalation Intensity:</label>
+                <select id="escalationLevel">
+                    <option value="gentle">Gentle (2 reminders)</option>
+                    <option value="moderate" selected>Moderate (3 reminders)</option>
+                    <option value="strong">Strong (5 reminders)</option>
+                </select>
+            </div>
+
+            <!-- Memory Mode: Photo/Voice options -->
+            <div id="memoryOptions" style="display: none;">
+                <label for="photoUpload">Add Photo (optional):</label>
+                <input type="file" id="photoUpload" accept="image/*" onchange="handlePhotoUpload(event)">
+                <div id="photoPreview"></div>
+
+                <label>Voice Note (optional):</label>
+                <button id="recordVoiceBtn" type="button" onclick="toggleVoiceRecording()">🎤 Record Voice Note</button>
+                <div id="voiceStatus"></div>
+
+                <label>
+                    <input type="checkbox" id="requireAcknowledgment">
+                    Require acknowledgment (repeats until acknowledged)
+                </label>
+            </div>
+
+            <!-- Sharing Options -->
+            <div id="sharingSection" style="display: none;">
+                <h3>Share This Reminder</h3>
+                <label for="shareWith">Share with:</label>
+                <input type="text" id="shareWith" placeholder="Enter email or name">
+                <select id="sharePermission">
+                    <option value="view">View Only</option>
+                    <option value="edit">Can Edit</option>
+                    <option value="complete">Can Complete</option>
+                </select>
+                <button type="button" onclick="addSharing()">Add</button>
+                <div id="sharingList"></div>
+            </div>
+
+            <button id="scheduleBtn" onclick="scheduleReminder()">Schedule Reminder</button>
         </div>
 
-        <button id="scheduleBtn">Schedule Reminder</button>
+        <!-- Active Reminders List -->
+        <div class="reminders-container">
+            <h2>Active Reminders <span id="reminderCount" class="count-badge">0</span></h2>
+            <div class="view-controls">
+                <button onclick="toggleFocusMode()" id="focusModeBtn">🎯 Focus Mode</button>
+                <button onclick="sortReminders('priority')">Sort by Priority</button>
+                <button onclick="sortReminders('date')">Sort by Date</button>
+            </div>
+            <ul id="reminderList"></ul>
+        </div>
     </div>
 
-    <!-- Active Reminders List -->
-    <h2>Scheduled Reminders</h2>
-    <ul id="reminderList"></ul>
-
-    <!-- Completed Today Section -->
-    <div id="completedSection" style="display: none;">
+    <!-- COMPLETED TAB -->
+    <div id="completedTab" class="tab-content">
         <h2>Completed Today ✅</h2>
+        <div class="stats-summary">
+            <div class="stat-card">
+                <h3 id="todayCount">0</h3>
+                <p>Today</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="weekCount">0</h3>
+                <p>This Week</p>
+            </div>
+            <div class="stat-card" id="streakCard" style="display: none;">
+                <h3 id="streakCount">0</h3>
+                <p>🔥 Day Streak</p>
+            </div>
+        </div>
         <ul id="completedList"></ul>
+
+        <h3>History</h3>
+        <div class="history-controls">
+            <input type="date" id="historyDate" onchange="loadHistory()">
+            <button onclick="clearHistory()">Clear History</button>
+        </div>
+        <ul id="historyList"></ul>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div id="analyticsTab" class="tab-content">
+        <h2>📊 Progress Analytics</h2>
+
+        <div class="analytics-overview">
+            <div class="stat-card">
+                <h3 id="totalCompleted">0</h3>
+                <p>Total Completed</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="completionRate">0%</h3>
+                <p>Completion Rate</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="avgPerDay">0</h3>
+                <p>Avg Per Day</p>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="chart-container">
+            <h3>Completion Trend (Last 7 Days)</h3>
+            <canvas id="trendChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3>By Priority</h3>
+            <div id="priorityBreakdown"></div>
+        </div>
+
+        <div class="chart-container" id="projectBreakdown" style="display: none;">
+            <h3>By Project</h3>
+            <div id="projectStats"></div>
+        </div>
+
+        <!-- ADHD Specific Analytics -->
+        <div id="adhdAnalytics" style="display: none;">
+            <h3>⚡ Focus Analytics</h3>
+            <div class="analytics-overview">
+                <div class="stat-card">
+                    <h3 id="focusStreak">0</h3>
+                    <p>Focus Streak</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="bestDay">-</h3>
+                    <p>Best Day</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Caregiver Analytics -->
+        <div id="caregiverAnalytics" style="display: none;">
+            <h3>🧠 Caregiver Insights</h3>
+            <div class="analytics-overview">
+                <div class="stat-card">
+                    <h3 id="adherenceRate">0%</h3>
+                    <p>Adherence Rate</p>
+                </div>
+                <div class="stat-card">
+                    <h3 id="missedCount">0</h3>
+                    <p>Missed Tasks</p>
+                </div>
+            </div>
+            <button onclick="generateReport()">📄 Generate Report</button>
+        </div>
     </div>
 </div>
 
@@ -115,6 +283,26 @@
         <p id="currentMode" style="font-weight: bold; margin-bottom: 15px;">None</p>
 
         <button onclick="changeMode()" class="change-mode-btn">Change Mode</button>
+
+        <hr style="margin: 20px 0;">
+
+        <h4>Notification Settings</h4>
+        <label>
+            <input type="checkbox" id="soundEnabled" checked>
+            Enable Sound
+        </label>
+        <label>
+            <input type="checkbox" id="vibrationEnabled" checked>
+            Enable Vibration
+        </label>
+
+        <h4>Display Settings</h4>
+        <label for="fontSize">Font Size:</label>
+        <select id="fontSize" onchange="changeFontSize()">
+            <option value="normal">Normal</option>
+            <option value="large">Large</option>
+            <option value="xlarge">Extra Large</option>
+        </select>
 
         <div class="modal-buttons">
             <button onclick="closeSettings()">Close</button>
@@ -130,14 +318,14 @@
         <label for="editTitle">Title:</label>
         <input type="text" id="editTitle">
 
-        <label for="editText">Text:</label>
-        <input type="text" id="editText">
+        <label for="editText">Description:</label>
+        <textarea id="editText" rows="3"></textarea>
 
         <label for="editDatetime">Due Date & Time:</label>
         <input type="datetime-local" id="editDatetime">
 
-        <label for="editRepeatInterval">Repeat every (minutes, optional):</label>
-        <input type="number" id="editRepeatInterval" placeholder="Enter minutes">
+        <label for="editRepeatInterval">Repeat every (minutes):</label>
+        <input type="number" id="editRepeatInterval">
 
         <div id="editPrioritySection" style="display: none;">
             <label for="editPriority">Priority:</label>
@@ -148,9 +336,19 @@
             </select>
         </div>
 
+        <div id="editProjectSection" style="display: none;">
+            <label for="editProject">Project:</label>
+            <select id="editProject">
+                <option value="none">No Project</option>
+                <option value="work">Work</option>
+                <option value="personal">Personal</option>
+                <option value="urgent">Urgent</option>
+            </select>
+        </div>
+
         <div class="modal-buttons">
-            <button id="cancelEditBtn">Cancel</button>
-            <button id="saveEditBtn">Save</button>
+            <button id="cancelEditBtn" onclick="cancelEdit()">Cancel</button>
+            <button id="saveEditBtn" onclick="saveEdit()">Save</button>
         </div>
     </div>
 </div>
@@ -159,9 +357,47 @@
 <div id="celebrationModal" class="modal celebration-modal">
     <div class="modal-content celebration-content">
         <div class="confetti">🎉</div>
-        <h2>Amazing Work!</h2>
+        <h2 id="celebrationTitle">Amazing Work!</h2>
         <p id="celebrationMessage">You completed a task!</p>
+        <div class="streak-display" id="streakDisplay" style="display: none;">
+            <h3>🔥 <span id="celebrationStreak">0</span> Day Streak!</h3>
+        </div>
         <button onclick="closeCelebration()">Continue</button>
+    </div>
+</div>
+
+<!-- ESCALATION ALERT MODAL (ADHD Mode) -->
+<div id="escalationModal" class="modal escalation-modal">
+    <div class="modal-content escalation-content">
+        <h2>⚡ Reminder Alert</h2>
+        <p id="escalationMessage"></p>
+        <div class="escalation-actions">
+            <button onclick="snoozeEscalation()" class="snooze-btn">Snooze 5 min</button>
+            <button onclick="acknowledgeEscalation()" class="ack-btn">Got it!</button>
+        </div>
+    </div>
+</div>
+
+<!-- SHARE MODAL -->
+<div id="shareModal" class="modal">
+    <div class="modal-content">
+        <h3>Share Reminder</h3>
+        <p>Share "<span id="shareReminderTitle"></span>" with:</p>
+
+        <label for="shareEmail">Email or Username:</label>
+        <input type="text" id="shareEmail" placeholder="Enter email">
+
+        <label for="sharePermissionModal">Permission Level:</label>
+        <select id="sharePermissionModal">
+            <option value="view">View Only</option>
+            <option value="edit">Can Edit</option>
+            <option value="complete">Can Complete</option>
+        </select>
+
+        <div class="modal-buttons">
+            <button onclick="closeShareModal()">Cancel</button>
+            <button onclick="confirmShare()">Share</button>
+        </div>
     </div>
 </div>
 
