@@ -5,9 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Reminder App</title>
     <link rel="stylesheet" type="text/css" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+<!-- ONBOARDING VIEW (Week 9) -->
+<div id="onboardingView" class="view">
+    <div class="onboarding-container">
+        <div class="onboarding-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="onboardingProgress"></div>
+            </div>
+            <span id="onboardingStep">Step 1 of 5</span>
+        </div>
+
+        <div class="onboarding-content" id="onboardingContent">
+            <!-- Dynamic content loaded by JavaScript -->
+        </div>
+
+        <div class="onboarding-actions">
+            <button id="onboardingSkip" class="btn-secondary">Skip Tutorial</button>
+            <button id="onboardingNext" class="btn-primary">Next</button>
+        </div>
+    </div>
+</div>
+
 <!-- HOMEPAGE VIEW - Mode Selection -->
 <div id="homepageView" class="view active">
     <h1>Welcome to Reminder App</h1>
@@ -52,6 +74,39 @@
     </div>
 </div>
 
+<!-- PIN LOCK SCREEN (Week 10) -->
+<div id="pinLockView" class="view">
+    <div class="pin-container">
+        <div class="lock-icon">🔒</div>
+        <h2>Enter PIN</h2>
+        <p>Enter your 4-digit PIN to unlock</p>
+
+        <div class="pin-display">
+            <span class="pin-dot" id="pin1"></span>
+            <span class="pin-dot" id="pin2"></span>
+            <span class="pin-dot" id="pin3"></span>
+            <span class="pin-dot" id="pin4"></span>
+        </div>
+
+        <div class="pin-keypad">
+            <button onclick="enterPin(1)">1</button>
+            <button onclick="enterPin(2)">2</button>
+            <button onclick="enterPin(3)">3</button>
+            <button onclick="enterPin(4)">4</button>
+            <button onclick="enterPin(5)">5</button>
+            <button onclick="enterPin(6)">6</button>
+            <button onclick="enterPin(7)">7</button>
+            <button onclick="enterPin(8)">8</button>
+            <button onclick="enterPin(9)">9</button>
+            <button onclick="clearPin()">Clear</button>
+            <button onclick="enterPin(0)">0</button>
+            <button onclick="useBiometric()">👆 Biometric</button>
+        </div>
+
+        <p id="pinError" class="error-message" style="display: none;"></p>
+    </div>
+</div>
+
 <!-- MAIN APP VIEW -->
 <div id="mainAppView" class="view">
     <!-- Navigation Tabs -->
@@ -69,6 +124,7 @@
             <div class="header-actions">
                 <button class="icon-btn" id="filterBtn" title="Filter">🔍</button>
                 <button class="icon-btn" id="exportBtn" title="Export">📥</button>
+                <button class="icon-btn" id="tutorialBtn" title="Show Tutorial">❓</button>
             </div>
         </div>
 
@@ -81,10 +137,24 @@
                 <option value="medium">Medium Priority</option>
                 <option value="low">Low Priority</option>
             </select>
-            <select id="filterProject" onchange="applyFilters()">
-                <option value="all">All Projects</option>
-            </select>
             <button onclick="clearFilters()">Clear Filters</button>
+        </div>
+
+        <!-- Mode Filter Section -->
+        <div class="mode-filter-section">
+            <h3>Filter by Mode</h3>
+            <label>
+                <input type="checkbox" id="filterWork" checked onchange="applyModeFilters()">
+                💼 Work Mode
+            </label>
+            <label>
+                <input type="checkbox" id="filterAdhd" checked onchange="applyModeFilters()">
+                ⚡ ADHD Mode
+            </label>
+            <label>
+                <input type="checkbox" id="filterMemory" checked onchange="applyModeFilters()">
+                🧠 Memory/Caregiver Mode
+            </label>
         </div>
 
         <!-- Reminder Input Section -->
@@ -100,17 +170,6 @@
             <label for="datetime">Due Date & Time:</label>
             <input type="datetime-local" id="datetime">
 
-            <!-- Work Mode: Project Selection -->
-            <div id="projectSection" style="display: none;">
-                <label for="project">Project:</label>
-                <select id="project">
-                    <option value="none">No Project</option>
-                    <option value="work">Work</option>
-                    <option value="personal">Personal</option>
-                    <option value="urgent">Urgent</option>
-                </select>
-            </div>
-
             <!-- Priority selector (Work/ADHD modes) -->
             <div id="prioritySection" style="display: none;">
                 <label for="priority">Priority:</label>
@@ -118,6 +177,17 @@
                     <option value="low">Low Priority</option>
                     <option value="medium" selected>Medium Priority</option>
                     <option value="high">High Priority</option>
+                </select>
+            </div>
+
+            <!-- Project selector (Work mode) -->
+            <div id="projectSection" style="display: none;">
+                <label for="project">Project:</label>
+                <select id="project">
+                    <option value="none">No Project</option>
+                    <option value="work">Work</option>
+                    <option value="personal">Personal</option>
+                    <option value="urgent">Urgent</option>
                 </select>
             </div>
 
@@ -150,38 +220,48 @@
                 </label>
             </div>
 
-            <!-- Sharing Options -->
-            <div id="sharingSection" style="display: none;">
-                <h3>Share This Reminder</h3>
-                <label for="shareWith">Share with:</label>
-                <input type="text" id="shareWith" placeholder="Enter email or name">
-                <select id="sharePermission">
-                    <option value="view">View Only</option>
-                    <option value="edit">Can Edit</option>
-                    <option value="complete">Can Complete</option>
-                </select>
-                <button type="button" onclick="addSharing()">Add</button>
-                <div id="sharingList"></div>
-            </div>
-
             <button id="scheduleBtn" onclick="scheduleReminder()">Schedule Reminder</button>
         </div>
 
         <!-- Active Reminders List -->
         <div class="reminders-container">
             <h2>Active Reminders <span id="reminderCount" class="count-badge">0</span></h2>
-            <div class="view-controls">
-                <button onclick="toggleFocusMode()" id="focusModeBtn">🎯 Focus Mode</button>
-                <button onclick="sortReminders('priority')">Sort by Priority</button>
-                <button onclick="sortReminders('date')">Sort by Date</button>
-            </div>
             <ul id="reminderList"></ul>
         </div>
     </div>
 
     <!-- COMPLETED TAB -->
     <div id="completedTab" class="tab-content">
-        <h2>Completed Today ✅</h2>
+        <h2>Completed Tasks ✅</h2>
+
+        <!-- Completed Filters -->
+        <div class="completed-filters">
+            <div class="filter-group">
+                <h4>Filter by Mode:</h4>
+                <label>
+                    <input type="checkbox" id="completedFilterWork" checked onchange="filterCompleted()">
+                    💼 Work
+                </label>
+                <label>
+                    <input type="checkbox" id="completedFilterAdhd" checked onchange="filterCompleted()">
+                    ⚡ ADHD
+                </label>
+                <label>
+                    <input type="checkbox" id="completedFilterMemory" checked onchange="filterCompleted()">
+                    🧠 Memory/Caregiver
+                </label>
+            </div>
+
+            <div class="filter-group">
+                <h4>Filter by Date:</h4>
+                <input type="date" id="completedDateStart">
+                <span>to</span>
+                <input type="date" id="completedDateEnd">
+                <button onclick="applyDateFilter()" class="btn-secondary">Apply</button>
+                <button onclick="clearDateFilter()" class="btn-secondary">Clear</button>
+            </div>
+        </div>
+
         <div class="stats-summary">
             <div class="stat-card">
                 <h3 id="todayCount">0</h3>
@@ -196,19 +276,25 @@
                 <p>🔥 Day Streak</p>
             </div>
         </div>
-        <ul id="completedList"></ul>
 
-        <h3>History</h3>
-        <div class="history-controls">
-            <input type="date" id="historyDate" onchange="loadHistory()">
-            <button onclick="clearHistory()">Clear History</button>
-        </div>
-        <ul id="historyList"></ul>
+        <ul id="completedList"></ul>
     </div>
 
     <!-- ANALYTICS TAB -->
     <div id="analyticsTab" class="tab-content">
         <h2>📊 Progress Analytics</h2>
+
+        <!-- Time Range Selector -->
+        <div class="analytics-controls">
+            <label for="analyticsRange">Time Range:</label>
+            <select id="analyticsRange" onchange="refreshAnalytics()">
+                <option value="7">Last 7 Days</option>
+                <option value="14">Last 14 Days</option>
+                <option value="30" selected>Last 30 Days</option>
+                <option value="90">Last 90 Days</option>
+            </select>
+            <button onclick="refreshAnalytics()" class="btn-secondary">🔄 Refresh</button>
+        </div>
 
         <div class="analytics-overview">
             <div class="stat-card">
@@ -223,89 +309,116 @@
                 <h3 id="avgPerDay">0</h3>
                 <p>Avg Per Day</p>
             </div>
+            <div class="stat-card">
+                <h3 id="mostProductiveDay">-</h3>
+                <p>Most Productive Day</p>
+            </div>
         </div>
 
-        <!-- Charts Section -->
+        <!-- Charts -->
         <div class="chart-container">
-            <h3>Completion Trend (Last 7 Days)</h3>
+            <h3>Tasks by Day of Week</h3>
+            <canvas id="dayOfWeekChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3>Tasks by Mode</h3>
+            <canvas id="modeChart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3>Daily Completion Trend</h3>
             <canvas id="trendChart"></canvas>
         </div>
 
-        <div class="chart-container">
-            <h3>By Priority</h3>
-            <div id="priorityBreakdown"></div>
-        </div>
-
-        <div class="chart-container" id="projectBreakdown" style="display: none;">
-            <h3>By Project</h3>
-            <div id="projectStats"></div>
-        </div>
-
-        <!-- ADHD Specific Analytics -->
-        <div id="adhdAnalytics" style="display: none;">
-            <h3>⚡ Focus Analytics</h3>
-            <div class="analytics-overview">
-                <div class="stat-card">
-                    <h3 id="focusStreak">0</h3>
-                    <p>Focus Streak</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="bestDay">-</h3>
-                    <p>Best Day</p>
-                </div>
+        <div class="insights-section">
+            <h3>📈 Insights</h3>
+            <div id="analyticsInsights">
+                <!-- Populated by JavaScript -->
             </div>
-        </div>
-
-        <!-- Caregiver Analytics -->
-        <div id="caregiverAnalytics" style="display: none;">
-            <h3>🧠 Caregiver Insights</h3>
-            <div class="analytics-overview">
-                <div class="stat-card">
-                    <h3 id="adherenceRate">0%</h3>
-                    <p>Adherence Rate</p>
-                </div>
-                <div class="stat-card">
-                    <h3 id="missedCount">0</h3>
-                    <p>Missed Tasks</p>
-                </div>
-            </div>
-            <button onclick="generateReport()">📄 Generate Report</button>
         </div>
     </div>
-</div>
 
-<!-- SETTINGS MODAL -->
+<!-- SETTINGS MODAL (Enhanced Week 8) -->
 <div id="settingsModal" class="modal">
-    <div class="modal-content">
-        <h3>Settings</h3>
+    <div class="modal-content settings-modal">
+        <h3>⚙️ Settings</h3>
 
-        <label>Current Mode:</label>
-        <p id="currentMode" style="font-weight: bold; margin-bottom: 15px;">None</p>
+        <div class="settings-section">
+            <h4>Current Mode</h4>
+            <p id="currentMode" class="current-mode-display">None</p>
+            <button onclick="changeMode()" class="btn-secondary full-width">Change Mode</button>
+        </div>
 
-        <button onclick="changeMode()" class="change-mode-btn">Change Mode</button>
+        <div class="settings-section">
+            <h4>🎨 Appearance (Week 8)</h4>
 
-        <hr style="margin: 20px 0;">
+            <label for="themeSelect">Theme:</label>
+            <select id="themeSelect" onchange="changeTheme()">
+                <option value="default">Default</option>
+                <option value="dark">Dark Mode</option>
+                <option value="high-contrast">High Contrast</option>
+                <option value="colorblind">Color-blind Friendly</option>
+            </select>
 
-        <h4>Notification Settings</h4>
-        <label>
-            <input type="checkbox" id="soundEnabled" checked>
-            Enable Sound
-        </label>
-        <label>
-            <input type="checkbox" id="vibrationEnabled" checked>
-            Enable Vibration
-        </label>
+            <label for="fontSize">Font Size:</label>
+            <select id="fontSize" onchange="changeFontSize()">
+                <option value="normal">Normal</option>
+                <option value="large">Large</option>
+                <option value="xlarge">Extra Large</option>
+            </select>
+        </div>
 
-        <h4>Display Settings</h4>
-        <label for="fontSize">Font Size:</label>
-        <select id="fontSize" onchange="changeFontSize()">
-            <option value="normal">Normal</option>
-            <option value="large">Large</option>
-            <option value="xlarge">Extra Large</option>
-        </select>
+        <div class="settings-section">
+            <h4>🔔 Notifications</h4>
+            <label>
+                <input type="checkbox" id="soundEnabled" checked onchange="saveSettings()">
+                Enable Sound
+            </label>
+            <label>
+                <input type="checkbox" id="vibrationEnabled" checked onchange="saveSettings()">
+                Enable Vibration
+            </label>
+            <label>
+                <input type="checkbox" id="voiceGuidance" onchange="saveSettings()">
+                Voice Guidance (Text-to-Speech)
+            </label>
+        </div>
+
+        <div class="settings-section">
+            <h4>🔒 Security (Week 10)</h4>
+            <label>
+                <input type="checkbox" id="pinEnabled" onchange="togglePinLock()">
+                Enable PIN Lock
+            </label>
+            <button id="setPinBtn" onclick="setupPin()" style="display: none;" class="btn-secondary">Set PIN</button>
+            <button id="changePinBtn" onclick="changePin()" style="display: none;" class="btn-secondary">Change PIN</button>
+
+            <label>
+                <input type="checkbox" id="biometricEnabled" onchange="toggleBiometric()">
+                Enable Biometric (Fingerprint/Face)
+            </label>
+
+            <label>
+                <input type="checkbox" id="auditLogEnabled" onchange="saveSettings()">
+                Enable Audit Log
+            </label>
+        </div>
+
+        <div class="settings-section">
+            <h4>📚 Help & Tutorial</h4>
+            <button onclick="restartTutorial()" class="btn-secondary full-width">Restart Tutorial</button>
+            <button onclick="viewAuditLog()" class="btn-secondary full-width">View Audit Log</button>
+        </div>
+
+        <div class="settings-section">
+            <h4>⚠️ Data Management</h4>
+            <button onclick="exportAllData()" class="btn-secondary full-width">Export All Data</button>
+            <button onclick="clearAllData()" class="btn-danger full-width">Clear All Data</button>
+        </div>
 
         <div class="modal-buttons">
-            <button onclick="closeSettings()">Close</button>
+            <button onclick="closeSettings()" class="btn-primary">Close</button>
         </div>
     </div>
 </div>
@@ -336,19 +449,28 @@
             </select>
         </div>
 
-        <div id="editProjectSection" style="display: none;">
-            <label for="editProject">Project:</label>
-            <select id="editProject">
-                <option value="none">No Project</option>
-                <option value="work">Work</option>
-                <option value="personal">Personal</option>
-                <option value="urgent">Urgent</option>
-            </select>
+        <!-- COMMENT MODAL -->
+        <div id="commentModal" class="modal">
+            <div class="modal-content">
+                <h3>💬 Comments</h3>
+
+                <div id="existingComments" class="existing-comments">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <label for="newCommentText">Add Comment:</label>
+                <textarea id="newCommentText" rows="3" placeholder="Enter your comment..."></textarea>
+
+                <div class="modal-buttons">
+                    <button onclick="cancelComment()" class="btn-secondary">Cancel</button>
+                    <button onclick="saveComment()" class="btn-primary">Add Comment</button>
+                </div>
+            </div>
         </div>
 
         <div class="modal-buttons">
-            <button id="cancelEditBtn" onclick="cancelEdit()">Cancel</button>
-            <button id="saveEditBtn" onclick="saveEdit()">Save</button>
+            <button id="cancelEditBtn" onclick="cancelEdit()" class="btn-secondary">Cancel</button>
+            <button id="saveEditBtn" onclick="saveEdit()" class="btn-primary">Save</button>
         </div>
     </div>
 </div>
@@ -362,41 +484,20 @@
         <div class="streak-display" id="streakDisplay" style="display: none;">
             <h3>🔥 <span id="celebrationStreak">0</span> Day Streak!</h3>
         </div>
-        <button onclick="closeCelebration()">Continue</button>
+        <button onclick="closeCelebration()" class="btn-primary">Continue</button>
     </div>
 </div>
 
-<!-- ESCALATION ALERT MODAL (ADHD Mode) -->
-<div id="escalationModal" class="modal escalation-modal">
-    <div class="modal-content escalation-content">
-        <h2>⚡ Reminder Alert</h2>
-        <p id="escalationMessage"></p>
-        <div class="escalation-actions">
-            <button onclick="snoozeEscalation()" class="snooze-btn">Snooze 5 min</button>
-            <button onclick="acknowledgeEscalation()" class="ack-btn">Got it!</button>
-        </div>
-    </div>
-</div>
-
-<!-- SHARE MODAL -->
-<div id="shareModal" class="modal">
+<!-- AUDIT LOG MODAL (Week 10) -->
+<div id="auditLogModal" class="modal">
     <div class="modal-content">
-        <h3>Share Reminder</h3>
-        <p>Share "<span id="shareReminderTitle"></span>" with:</p>
-
-        <label for="shareEmail">Email or Username:</label>
-        <input type="text" id="shareEmail" placeholder="Enter email">
-
-        <label for="sharePermissionModal">Permission Level:</label>
-        <select id="sharePermissionModal">
-            <option value="view">View Only</option>
-            <option value="edit">Can Edit</option>
-            <option value="complete">Can Complete</option>
-        </select>
-
+        <h3>📋 Audit Log</h3>
+        <div id="auditLogContent" class="audit-log-content">
+            <!-- Populated by JavaScript -->
+        </div>
         <div class="modal-buttons">
-            <button onclick="closeShareModal()">Cancel</button>
-            <button onclick="confirmShare()">Share</button>
+            <button onclick="closeAuditLog()" class="btn-primary">Close</button>
+            <button onclick="exportAuditLog()" class="btn-secondary">Export Log</button>
         </div>
     </div>
 </div>
