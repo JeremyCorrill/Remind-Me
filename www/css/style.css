@@ -111,36 +111,32 @@ body.font-xlarge button {
 
 /* ============= VIEW MANAGEMENT ============= */
 
-#homepageView {
+.view {
     display: none;
+    width: 100%;
+    min-height: 100vh;
+    animation: fadeIn 0.3s ease;
 }
 
-#homepageView.active {
+.view.active {
     display: block !important;
 }
 
-#mainAppView {
-    display: none;
+#homepageView.active {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
 }
 
 #mainAppView.active {
     display: block !important;
 }
 
-#onboardingView,
-#pinLockView {
-    display: none;
-}
-
 #onboardingView.active,
 #pinLockView.active {
     display: block !important;
-}
-
-.view {
-    width: 100%;
-    min-height: 100vh;
-    animation: fadeIn 0.3s ease;
 }
 
 @keyframes fadeIn {
@@ -1162,6 +1158,618 @@ body.memory-mode .reminder-info {
     line-height: 1.8;
 }
 
+/* ============= PHASE 1 & 2: SMART FEATURES ============= */
+
+/* Smart Features Section */
+.smart-features-section {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 12px;
+    margin-top: 20px;
+    box-shadow: var(--shadow);
+}
+
+.smart-feature-item {
+    margin-bottom: 15px;
+}
+
+.smart-feature-item label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.smart-feature-item input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+/* NLP Input */
+.nlp-input {
+    background: rgba(33, 150, 243, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.nlp-input input[type="text"] {
+    width: calc(100% - 100px);
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.nlp-input button {
+    width: 90px;
+    display: inline-block;
+    margin: 0;
+    vertical-align: top;
+}
+
+/* Template Section */
+.template-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(76, 175, 80, 0.05);
+    border-radius: 8px;
+}
+
+.template-section select {
+    width: calc(100% - 220px);
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.template-section button {
+    width: 200px;
+    display: inline-block;
+    margin: 0;
+    font-size: 0.9em;
+}
+
+/* Subtasks Section */
+.subtasks-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 152, 0, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid var(--warning-color);
+}
+
+.subtasks-section h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.subtask-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+    background: white;
+    border-radius: 6px;
+}
+
+.subtask-item input[type="text"] {
+    flex: 1;
+    margin: 0;
+}
+
+.subtask-item button {
+    width: auto;
+    margin: 0;
+    padding: 6px 12px;
+    font-size: 0.85em;
+}
+
+.subtask-item.completed {
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+
+.subtask-progress {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.subtask-progress-bar {
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.subtask-progress-fill {
+    height: 100%;
+    background: var(--success-color);
+    transition: width 0.3s ease;
+}
+
+/* Smart Scheduling */
+.smart-scheduling {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(156, 39, 176, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid #9C27B0;
+}
+
+.smart-scheduling h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.suggestion-item {
+    padding: 12px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.suggestion-item:hover {
+    border-color: #9C27B0;
+    box-shadow: 0 2px 8px rgba(156, 39, 176, 0.2);
+    transform: translateX(5px);
+}
+
+.suggestion-item strong {
+    display: block;
+    color: #9C27B0;
+    margin-bottom: 4px;
+}
+
+.suggestion-item small {
+    color: #666;
+}
+
+/* Recurring Section */
+.recurring-section {
+    margin: 20px 0;
+}
+
+.day-selector {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.day-selector label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: normal;
+}
+
+.day-selector label:hover {
+    border-color: var(--primary-color);
+}
+
+.day-selector input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+}
+
+.day-selector input[type="checkbox"]:checked + label,
+.day-selector label:has(input:checked) {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Location Section */
+.location-section {
+    margin: 20px 0;
+}
+
+#locationOptions {
+    margin-top: 10px;
+    padding: 15px;
+    background: rgba(33, 150, 243, 0.05);
+    border-radius: 8px;
+}
+
+#locationOptions input[type="text"] {
+    width: calc(100% - 120px);
+    display: inline-block;
+    margin-right: 10px;
+}
+
+#locationOptions select {
+    width: 110px;
+    display: inline-block;
+}
+
+#locationOptions button {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Dependencies Section */
+.dependencies-section {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(244, 67, 54, 0.05);
+    border-radius: 8px;
+}
+
+/* ============= PHASE 2: ANALYTICS ENHANCEMENTS ============= */
+
+/* Productivity Heatmap */
+.heatmap-container {
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: 60px repeat(7, 1fr);
+    gap: 4px;
+    font-size: 0.85em;
+}
+
+.heatmap-hour {
+    text-align: right;
+    padding: 5px;
+    color: #666;
+    font-size: 0.8em;
+}
+
+.heatmap-cell {
+    aspect-ratio: 1;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.heatmap-cell.level-0 { background: #ebedf0; }
+.heatmap-cell.level-1 { background: #c6e48b; }
+.heatmap-cell.level-2 { background: #7bc96f; }
+.heatmap-cell.level-3 { background: #239a3b; }
+.heatmap-cell.level-4 { background: #196127; }
+
+.heatmap-legend {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 5px;
+    margin-top: 15px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.heatmap-legend-item {
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+}
+
+/* Comparison Container */
+.comparison-container {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+}
+
+.comparison-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.comparison-item {
+    background: rgba(33, 150, 243, 0.05);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary-color);
+}
+
+.comparison-item h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--secondary-color);
+}
+
+.comparison-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.comparison-metric:last-child {
+    border-bottom: none;
+}
+
+.comparison-value {
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.comparison-change {
+    font-size: 0.9em;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.comparison-change.positive {
+    background: rgba(76, 175, 80, 0.2);
+    color: #2e7d32;
+}
+
+.comparison-change.negative {
+    background: rgba(244, 67, 54, 0.2);
+    color: #c62828;
+}
+
+.comparison-change.neutral {
+    background: rgba(158, 158, 158, 0.2);
+    color: #616161;
+}
+
+/* Burnout Detection */
+.burnout-detection {
+    background: linear-gradient(135deg, #ff6b6b, #ff8787);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    animation: pulse-warning 2s ease-in-out infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3); }
+    50% { box-shadow: 0 4px 25px rgba(255, 107, 107, 0.5); }
+}
+
+.burnout-detection h3 {
+    margin-top: 0;
+    color: white;
+}
+
+.burnout-detection p {
+    font-size: 1.1em;
+    margin: 15px 0;
+    line-height: 1.6;
+}
+
+.burnout-detection button {
+    background: white;
+    color: #ff6b6b;
+    font-weight: 700;
+}
+
+.burnout-detection button:hover {
+    background: #f5f5f5;
+    transform: translateY(-2px);
+}
+
+/* Estimation Tracking */
+.estimation-tracking {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+}
+
+.estimation-tracking h3 {
+    margin-top: 0;
+    color: var(--text-color);
+}
+
+.estimation-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 15px;
+    background: rgba(33, 150, 243, 0.05);
+    border-radius: 8px;
+}
+
+.estimation-stat-label {
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.estimation-stat-value {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: var(--secondary-color);
+}
+
+.estimation-chart {
+    margin-top: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
+/* Focus Score Display */
+#focusScore {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* On-Time Rate with conditional color */
+.stat-card.on-time-high #onTimeRate {
+    color: #4CAF50;
+}
+
+.stat-card.on-time-medium #onTimeRate {
+    color: #FF9800;
+}
+
+.stat-card.on-time-low #onTimeRate {
+    color: #f44336;
+}
+
+/* Smart Suggestions Modal */
+#smartSuggestionsList {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.smart-suggestion-card {
+    padding: 15px;
+    margin-bottom: 15px;
+    background: rgba(156, 39, 176, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid #9C27B0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.smart-suggestion-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 2px 8px rgba(156, 39, 176, 0.2);
+}
+
+.smart-suggestion-card h4 {
+    margin: 0 0 8px 0;
+    color: #9C27B0;
+}
+
+.smart-suggestion-card p {
+    margin: 5px 0;
+    color: #666;
+    font-size: 0.95em;
+}
+
+.smart-suggestion-card .suggestion-reason {
+    font-size: 0.85em;
+    color: #999;
+    font-style: italic;
+    margin-top: 8px;
+}
+
+/* Burnout Suggestions */
+#burnoutSuggestionsList {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.burnout-suggestion-item {
+    padding: 15px;
+    margin-bottom: 15px;
+    background: rgba(76, 175, 80, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid var(--success-color);
+}
+
+.burnout-suggestion-item h4 {
+    margin: 0 0 8px 0;
+    color: var(--success-color);
+}
+
+.burnout-suggestion-item p {
+    margin: 5px 0;
+    line-height: 1.6;
+}
+
+.burnout-suggestion-item ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.burnout-suggestion-item li {
+    margin-bottom: 5px;
+    background: none;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    display: list-item;
+}
+
+/* Subtask Display in Reminder */
+.reminder-subtasks {
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: 6px;
+}
+
+.reminder-subtasks-header {
+    font-size: 0.9em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.reminder-subtask-item {
+    font-size: 0.85em;
+    padding: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.reminder-subtask-item.completed {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.reminder-subtask-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Voice Input Indicator */
+.voice-recording-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #ff6b6b;
+    color: white;
+    border-radius: 6px;
+    font-size: 0.9em;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.voice-recording-indicator::before {
+    content: "🎤";
+    font-size: 1.2em;
+}
+
 /* ============= RESPONSIVE DESIGN ============= */
 
 @media (max-width: 768px) {
@@ -1228,5 +1836,256 @@ body.memory-mode .reminder-info {
 
     .modal {
         display: none !important;
+    }
+}
+/* ============= PHASE 2: PRODUCTIVITY HEATMAP ============= */
+.heatmap-container {
+    padding: 20px;
+    overflow-x: auto;
+}
+
+.heatmap-grid {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 20px;
+}
+
+.heatmap-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    justify-content: space-around;
+    padding-right: 10px;
+}
+
+.heatmap-label {
+    font-size: 0.75em;
+    color: #666;
+    height: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.heatmap-week {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.heatmap-cell {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.3);
+    border: 1px solid #333;
+}
+
+.heatmap-cell.intensity-0 {
+    background-color: #ebedf0;
+}
+
+.heatmap-cell.intensity-1 {
+    background-color: #c6e48b;
+}
+
+.heatmap-cell.intensity-2 {
+    background-color: #7bc96f;
+}
+
+.heatmap-cell.intensity-3 {
+    background-color: #40c463;
+}
+
+.heatmap-cell.intensity-4 {
+    background-color: #30a14e;
+}
+
+.heatmap-cell.intensity-5 {
+    background-color: #216e39;
+}
+
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.85em;
+    color: #666;
+    justify-content: flex-end;
+    padding-right: 20px;
+}
+
+.heatmap-legend .heatmap-cell {
+    cursor: default;
+}
+
+/* ============= PHASE 2: COMPARISON VIEW ============= */
+.comparison-container {
+    background: var(--card-bg);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+}
+
+.comparison-container h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: var(--text-color);
+}
+
+.comparison-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.comparison-item {
+    background: rgba(0,0,0,0.02);
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.comparison-item h4 {
+    margin: 0 0 15px 0;
+    color: var(--text-color);
+    font-size: 1em;
+}
+
+.comparison-stat {
+    font-size: 1.1em;
+}
+
+.comparison-value {
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.comparison-value .current {
+    color: var(--primary-color);
+    font-size: 1.4em;
+}
+
+.comparison-value .previous {
+    color: #999;
+}
+
+.comparison-change {
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+/* ============= PHASE 2: BURNOUT DETECTION ============= */
+.burnout-detection {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    animation: pulseWarning 2s ease-in-out infinite;
+}
+
+@keyframes pulseWarning {
+    0%, 100% {
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(255, 107, 107, 0.5);
+    }
+}
+
+.burnout-detection h3 {
+    margin-top: 0;
+    color: white;
+    font-size: 1.3em;
+}
+
+.burnout-detection p {
+    margin: 10px 0;
+}
+
+.burnout-detection ul {
+    list-style: none;
+    padding-left: 0;
+    margin: 15px 0;
+}
+
+.burnout-detection li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+    background: none;
+    border: none;
+    box-shadow: none;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.burnout-detection li:before {
+    content: "⚠️";
+    position: absolute;
+    left: 0;
+}
+
+.burnout-detection button {
+    background: white;
+    color: #ff6b6b;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.burnout-detection button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ============= PHASE 2: FOCUS SCORE & ON-TIME RATE ============= */
+.analytics-overview .stat-card:nth-child(5) h3 {
+    color: #FF9800;
+}
+
+.analytics-overview .stat-card:nth-child(6) h3 {
+    color: #2196F3;
+}
+
+/* Color coding for scores */
+.stat-card[data-score="low"] h3 {
+    color: #f44336 !important;
+}
+
+.stat-card[data-score="medium"] h3 {
+    color: #FF9800 !important;
+}
+
+.stat-card[data-score="high"] h3 {
+    color: #4CAF50 !important;
+}
+
+/* ============= RESPONSIVE ADJUSTMENTS FOR PHASE 2 ============= */
+@media (max-width: 768px) {
+    .heatmap-container {
+        padding: 10px;
+    }
+
+    .heatmap-grid {
+        overflow-x: auto;
+    }
+
+    .comparison-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .comparison-item {
+        margin-bottom: 15px;
     }
 }

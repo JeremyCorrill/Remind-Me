@@ -220,6 +220,116 @@
                 </label>
             </div>
 
+            <!-- PHASE 1: Smart Features -->
+            <div id="smartFeatures" class="smart-features-section">
+                <!-- Voice Input -->
+                <div class="smart-feature-item">
+                    <label>
+                        <input type="checkbox" id="useVoiceInput">
+                        🎤 Use Voice Input (Say your reminder aloud)
+                    </label>
+                </div>
+
+                <!-- Natural Language Processing -->
+                <div class="nlp-input" id="nlpInput" style="display: none;">
+                    <label for="nlpText">Or type naturally:</label>
+                    <input type="text" id="nlpText" placeholder="e.g., 'Remind me to call mom tomorrow at 3pm'">
+                    <button type="button" onclick="parseNaturalLanguage()" class="btn-secondary">Parse</button>
+                </div>
+
+                <!-- Template Selection -->
+                <div class="template-section">
+                    <label for="templateSelect">📋 Use Template:</label>
+                    <select id="templateSelect" onchange="loadTemplate()">
+                        <option value="">-- Select Template --</option>
+                        <optgroup label="Work Templates">
+                            <option value="work_meeting">Weekly Team Meeting</option>
+                            <option value="work_deadline">Project Deadline</option>
+                            <option value="work_invoice">Invoice Due</option>
+                            <option value="work_review">Performance Review</option>
+                        </optgroup>
+                        <optgroup label="ADHD Templates">
+                            <option value="adhd_morning">Morning Routine</option>
+                            <option value="adhd_medication">Take Medication</option>
+                            <option value="adhd_pomodoro">Pomodoro Session</option>
+                            <option value="adhd_break">Take Break</option>
+                        </optgroup>
+                        <optgroup label="Memory Templates">
+                            <option value="memory_pills">Take Pills</option>
+                            <option value="memory_water">Drink Water</option>
+                            <option value="memory_call">Call Caregiver</option>
+                            <option value="memory_meal">Meal Time</option>
+                        </optgroup>
+                    </select>
+                    <button type="button" onclick="showCreateTemplate()" class="btn-secondary">➕ Create Custom Template</button>
+                </div>
+
+                <!-- Subtasks Section -->
+                <div class="subtasks-section" id="subtasksSection" style="display: none;">
+                    <h4>📋 Subtasks / Checklist</h4>
+                    <div id="subtasksList"></div>
+                    <button type="button" onclick="addSubtask()" class="btn-secondary">+ Add Subtask</button>
+                </div>
+
+                <!-- Smart Scheduling Assistant -->
+                <div class="smart-scheduling" id="smartScheduling" style="display: none;">
+                    <h4>🤖 Smart Suggestions</h4>
+                    <div id="schedulingSuggestions"></div>
+                </div>
+
+                <!-- Recurring Pattern -->
+                <div class="recurring-section">
+                    <label for="recurringPattern">🔁 Recurring Pattern:</label>
+                    <select id="recurringPattern" onchange="handleRecurringChange()">
+                        <option value="none">One-time</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekdays">Every Weekday</option>
+                        <option value="weekends">Every Weekend</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="biweekly">Bi-weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="custom">Custom Pattern...</option>
+                    </select>
+                    <div id="customRecurringOptions" style="display: none;">
+                        <label>Days of week:</label>
+                        <div class="day-selector">
+                            <label><input type="checkbox" value="0"> Sun</label>
+                            <label><input type="checkbox" value="1"> Mon</label>
+                            <label><input type="checkbox" value="2"> Tue</label>
+                            <label><input type="checkbox" value="3"> Wed</label>
+                            <label><input type="checkbox" value="4"> Thu</label>
+                            <label><input type="checkbox" value="5"> Fri</label>
+                            <label><input type="checkbox" value="6"> Sat</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Location-Based Reminder -->
+                <div class="location-section">
+                    <label>
+                        <input type="checkbox" id="useLocation">
+                        📍 Location-Based Reminder
+                    </label>
+                    <div id="locationOptions" style="display: none;">
+                        <input type="text" id="locationAddress" placeholder="Enter address or place name">
+                        <select id="locationTrigger">
+                            <option value="arrive">When I arrive</option>
+                            <option value="leave">When I leave</option>
+                        </select>
+                        <button type="button" onclick="getCurrentLocation()" class="btn-secondary">📍 Use Current Location</button>
+                    </div>
+                </div>
+
+                <!-- Task Dependencies -->
+                <div class="dependencies-section" style="display: none;" id="dependenciesSection">
+                    <label for="dependsOn">⛓️ Depends On Task:</label>
+                    <select id="dependsOn">
+                        <option value="none">No dependencies</option>
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+            </div>
+
             <button id="scheduleBtn" onclick="scheduleReminder()">Schedule Reminder</button>
         </div>
 
@@ -293,7 +403,8 @@
                 <option value="30" selected>Last 30 Days</option>
                 <option value="90">Last 90 Days</option>
             </select>
-            <button onclick="refreshAnalytics()" class="btn-secondary">🔄 Refresh</button>
+            <button onclick="refreshAnalyticsPhase2()" class="btn-secondary">🔄 Refresh</button>
+            <button onclick="exportAnalytics()" class="btn-secondary">📥 Export Report</button>
         </div>
 
         <div class="analytics-overview">
@@ -313,6 +424,20 @@
                 <h3 id="mostProductiveDay">-</h3>
                 <p>Most Productive Day</p>
             </div>
+            <div class="stat-card">
+                <h3 id="focusScore">0</h3>
+                <p>Focus Score</p>
+            </div>
+            <div class="stat-card">
+                <h3 id="onTimeRate">0%</h3>
+                <p>On-Time Completion</p>
+            </div>
+        </div>
+
+        <!-- PHASE 2: Productivity Heatmap -->
+        <div class="chart-container">
+            <h3>🔥 Productivity Heatmap</h3>
+            <div id="productivityHeatmap" class="heatmap-container"></div>
         </div>
 
         <!-- Charts -->
@@ -331,6 +456,36 @@
             <canvas id="trendChart"></canvas>
         </div>
 
+        <!-- PHASE 2: Comparison View -->
+        <div class="comparison-container">
+            <h3>📊 Period Comparison</h3>
+            <div class="comparison-stats">
+                <div class="comparison-item">
+                    <h4>This Week vs Last Week</h4>
+                    <div id="weekComparison"></div>
+                </div>
+                <div class="comparison-item">
+                    <h4>This Month vs Last Month</h4>
+                    <div id="monthComparison"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 2: Burnout Detection -->
+        <div class="burnout-detection" id="burnoutAlert" style="display: none;">
+            <h3>⚠️ Burnout Warning</h3>
+            <p id="burnoutMessage"></p>
+            <button onclick="showBurnoutSuggestions()" class="btn-primary">View Suggestions</button>
+        </div>
+
+        <!-- PHASE 2: Time Estimation Accuracy -->
+        <div class="estimation-tracking">
+            <h3>⏱️ Time Estimation Accuracy</h3>
+            <div id="estimationStats">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
         <div class="insights-section">
             <h3>📈 Insights</h3>
             <div id="analyticsInsights">
@@ -339,174 +494,241 @@
         </div>
     </div>
 
-<!-- SETTINGS MODAL (Enhanced Week 8) -->
-<div id="settingsModal" class="modal">
-    <div class="modal-content settings-modal">
-        <h3>⚙️ Settings</h3>
+    <!-- SETTINGS MODAL (Enhanced Week 8) -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content settings-modal">
+            <h3>⚙️ Settings</h3>
 
-        <div class="settings-section">
-            <h4>Current Mode</h4>
-            <p id="currentMode" class="current-mode-display">None</p>
-            <button onclick="changeMode()" class="btn-secondary full-width">Change Mode</button>
-        </div>
+            <div class="settings-section">
+                <h4>Current Mode</h4>
+                <p id="currentMode" class="current-mode-display">None</p>
+                <button onclick="changeMode()" class="btn-secondary full-width">Change Mode</button>
+            </div>
 
-        <div class="settings-section">
-            <h4>🎨 Appearance (Week 8)</h4>
+            <div class="settings-section">
+                <h4>🎨 Appearance (Week 8)</h4>
 
-            <label for="themeSelect">Theme:</label>
-            <select id="themeSelect" onchange="changeTheme()">
-                <option value="default">Default</option>
-                <option value="dark">Dark Mode</option>
-                <option value="high-contrast">High Contrast</option>
-                <option value="colorblind">Color-blind Friendly</option>
-            </select>
+                <label for="themeSelect">Theme:</label>
+                <select id="themeSelect" onchange="changeTheme()">
+                    <option value="default">Default</option>
+                    <option value="dark">Dark Mode</option>
+                    <option value="high-contrast">High Contrast</option>
+                    <option value="colorblind">Color-blind Friendly</option>
+                </select>
 
-            <label for="fontSize">Font Size:</label>
-            <select id="fontSize" onchange="changeFontSize()">
-                <option value="normal">Normal</option>
-                <option value="large">Large</option>
-                <option value="xlarge">Extra Large</option>
-            </select>
-        </div>
+                <label for="fontSize">Font Size:</label>
+                <select id="fontSize" onchange="changeFontSize()">
+                    <option value="normal">Normal</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">Extra Large</option>
+                </select>
+            </div>
 
-        <div class="settings-section">
-            <h4>🔔 Notifications</h4>
-            <label>
-                <input type="checkbox" id="soundEnabled" checked onchange="saveSettings()">
-                Enable Sound
-            </label>
-            <label>
-                <input type="checkbox" id="vibrationEnabled" checked onchange="saveSettings()">
-                Enable Vibration
-            </label>
-            <label>
-                <input type="checkbox" id="voiceGuidance" onchange="saveSettings()">
-                Voice Guidance (Text-to-Speech)
-            </label>
-        </div>
+            <div class="settings-section">
+                <h4>🔔 Notifications</h4>
+                <label>
+                    <input type="checkbox" id="soundEnabled" checked onchange="saveSettings()">
+                    Enable Sound
+                </label>
+                <label>
+                    <input type="checkbox" id="vibrationEnabled" checked onchange="saveSettings()">
+                    Enable Vibration
+                </label>
+                <label>
+                    <input type="checkbox" id="voiceGuidance" onchange="saveSettings()">
+                    Voice Guidance (Text-to-Speech)
+                </label>
+            </div>
 
-        <div class="settings-section">
-            <h4>🔒 Security (Week 10)</h4>
-            <label>
-                <input type="checkbox" id="pinEnabled" onchange="togglePinLock()">
-                Enable PIN Lock
-            </label>
-            <button id="setPinBtn" onclick="setupPin()" style="display: none;" class="btn-secondary">Set PIN</button>
-            <button id="changePinBtn" onclick="changePin()" style="display: none;" class="btn-secondary">Change PIN</button>
+            <div class="settings-section">
+                <h4>🔒 Security (Week 10)</h4>
+                <label>
+                    <input type="checkbox" id="pinEnabled" onchange="togglePinLock()">
+                    Enable PIN Lock
+                </label>
+                <button id="setPinBtn" onclick="setupPin()" style="display: none;" class="btn-secondary">Set PIN</button>
+                <button id="changePinBtn" onclick="changePin()" style="display: none;" class="btn-secondary">Change PIN</button>
 
-            <label>
-                <input type="checkbox" id="biometricEnabled" onchange="toggleBiometric()">
-                Enable Biometric (Fingerprint/Face)
-            </label>
+                <label>
+                    <input type="checkbox" id="biometricEnabled" onchange="toggleBiometric()">
+                    Enable Biometric (Fingerprint/Face)
+                </label>
 
-            <label>
-                <input type="checkbox" id="auditLogEnabled" onchange="saveSettings()">
-                Enable Audit Log
-            </label>
-        </div>
+                <label>
+                    <input type="checkbox" id="auditLogEnabled" onchange="saveSettings()">
+                    Enable Audit Log
+                </label>
+            </div>
 
-        <div class="settings-section">
-            <h4>📚 Help & Tutorial</h4>
-            <button onclick="restartTutorial()" class="btn-secondary full-width">Restart Tutorial</button>
-            <button onclick="viewAuditLog()" class="btn-secondary full-width">View Audit Log</button>
-        </div>
+            <div class="settings-section">
+                <h4>📚 Help & Tutorial</h4>
+                <button onclick="restartTutorial()" class="btn-secondary full-width">Restart Tutorial</button>
+                <button onclick="viewAuditLog()" class="btn-secondary full-width">View Audit Log</button>
+            </div>
 
-        <div class="settings-section">
-            <h4>⚠️ Data Management</h4>
-            <button onclick="exportAllData()" class="btn-secondary full-width">Export All Data</button>
-            <button onclick="clearAllData()" class="btn-danger full-width">Clear All Data</button>
-        </div>
+            <div class="settings-section">
+                <h4>⚠️ Data Management</h4>
+                <button onclick="exportAllData()" class="btn-secondary full-width">Export All Data</button>
+                <button onclick="clearAllData()" class="btn-danger full-width">Clear All Data</button>
+            </div>
 
-        <div class="modal-buttons">
-            <button onclick="closeSettings()" class="btn-primary">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- EDIT REMINDER MODAL -->
-<div id="editModal" class="modal">
-    <div class="modal-content">
-        <h3>Edit Reminder</h3>
-
-        <label for="editTitle">Title:</label>
-        <input type="text" id="editTitle">
-
-        <label for="editText">Description:</label>
-        <textarea id="editText" rows="3"></textarea>
-
-        <label for="editDatetime">Due Date & Time:</label>
-        <input type="datetime-local" id="editDatetime">
-
-        <label for="editRepeatInterval">Repeat every (minutes):</label>
-        <input type="number" id="editRepeatInterval">
-
-        <div id="editPrioritySection" style="display: none;">
-            <label for="editPriority">Priority:</label>
-            <select id="editPriority">
-                <option value="low">Low Priority</option>
-                <option value="medium">Medium Priority</option>
-                <option value="high">High Priority</option>
-            </select>
-        </div>
-
-        <!-- COMMENT MODAL -->
-        <div id="commentModal" class="modal">
-            <div class="modal-content">
-                <h3>💬 Comments</h3>
-
-                <div id="existingComments" class="existing-comments">
-                    <!-- Populated by JavaScript -->
-                </div>
-
-                <label for="newCommentText">Add Comment:</label>
-                <textarea id="newCommentText" rows="3" placeholder="Enter your comment..."></textarea>
-
-                <div class="modal-buttons">
-                    <button onclick="cancelComment()" class="btn-secondary">Cancel</button>
-                    <button onclick="saveComment()" class="btn-primary">Add Comment</button>
-                </div>
+            <div class="modal-buttons">
+                <button onclick="closeSettings()" class="btn-primary">Close</button>
             </div>
         </div>
+    </div>
 
-        <div class="modal-buttons">
-            <button id="cancelEditBtn" onclick="cancelEdit()" class="btn-secondary">Cancel</button>
-            <button id="saveEditBtn" onclick="saveEdit()" class="btn-primary">Save</button>
+    <!-- EDIT REMINDER MODAL -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Reminder</h3>
+
+            <label for="editTitle">Title:</label>
+            <input type="text" id="editTitle">
+
+            <label for="editText">Description:</label>
+            <textarea id="editText" rows="3"></textarea>
+
+            <label for="editDatetime">Due Date & Time:</label>
+            <input type="datetime-local" id="editDatetime">
+
+            <label for="editRepeatInterval">Repeat every (minutes):</label>
+            <input type="number" id="editRepeatInterval">
+
+            <div id="editPrioritySection" style="display: none;">
+                <label for="editPriority">Priority:</label>
+                <select id="editPriority">
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
+                </select>
+            </div>
+
+            <!-- COMMENT MODAL -->
+            <div id="commentModal" class="modal">
+                <div class="modal-content">
+                    <h3>💬 Comments</h3>
+
+                    <div id="existingComments" class="existing-comments">
+                        <!-- Populated by JavaScript -->
+                    </div>
+
+                    <label for="newCommentText">Add Comment:</label>
+                    <textarea id="newCommentText" rows="3" placeholder="Enter your comment..."></textarea>
+
+                    <div class="modal-buttons">
+                        <button onclick="cancelComment()" class="btn-secondary">Cancel</button>
+                        <button onclick="saveComment()" class="btn-primary">Add Comment</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button id="cancelEditBtn" onclick="cancelEdit()" class="btn-secondary">Cancel</button>
+                <button id="saveEditBtn" onclick="saveEdit()" class="btn-primary">Save</button>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- CELEBRATION MODAL (ADHD Mode) -->
-<div id="celebrationModal" class="modal celebration-modal">
-    <div class="modal-content celebration-content">
-        <div class="confetti">🎉</div>
-        <h2 id="celebrationTitle">Amazing Work!</h2>
-        <p id="celebrationMessage">You completed a task!</p>
-        <div class="streak-display" id="streakDisplay" style="display: none;">
-            <h3>🔥 <span id="celebrationStreak">0</span> Day Streak!</h3>
+    <!-- TEMPLATE CREATION MODAL -->
+    <div id="templateModal" class="modal">
+        <div class="modal-content">
+            <h3>📋 Create Custom Template</h3>
+
+            <label for="templateName">Template Name:</label>
+            <input type="text" id="templateName" placeholder="e.g., Daily Standup">
+
+            <label for="templateCategory">Category:</label>
+            <select id="templateCategory">
+                <option value="work">Work</option>
+                <option value="adhd">ADHD</option>
+                <option value="memory">Memory/Caregiver</option>
+                <option value="personal">Personal</option>
+            </select>
+
+            <label for="templateTitle">Default Title:</label>
+            <input type="text" id="templateTitle" placeholder="Task title">
+
+            <label for="templateDescription">Default Description:</label>
+            <textarea id="templateDescription" rows="3"></textarea>
+
+            <label for="templatePriority">Default Priority:</label>
+            <select id="templatePriority">
+                <option value="low">Low</option>
+                <option value="medium" selected>Medium</option>
+                <option value="high">High</option>
+            </select>
+
+            <label>
+                <input type="checkbox" id="templateHasSubtasks">
+                Include subtasks
+            </label>
+
+            <div class="modal-buttons">
+                <button onclick="cancelTemplateCreation()" class="btn-secondary">Cancel</button>
+                <button onclick="saveCustomTemplate()" class="btn-primary">Save Template</button>
+            </div>
         </div>
-        <button onclick="closeCelebration()" class="btn-primary">Continue</button>
     </div>
-</div>
 
-<!-- AUDIT LOG MODAL (Week 10) -->
-<div id="auditLogModal" class="modal">
-    <div class="modal-content">
-        <h3>📋 Audit Log</h3>
-        <div id="auditLogContent" class="audit-log-content">
-            <!-- Populated by JavaScript -->
-        </div>
-        <div class="modal-buttons">
-            <button onclick="closeAuditLog()" class="btn-primary">Close</button>
-            <button onclick="exportAuditLog()" class="btn-secondary">Export Log</button>
+    <!-- SMART SUGGESTIONS MODAL -->
+    <div id="smartSuggestionsModal" class="modal">
+        <div class="modal-content">
+            <h3>🤖 Smart Scheduling Suggestions</h3>
+            <div id="smartSuggestionsList">
+                <!-- Populated by JS -->
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeSmartSuggestions()" class="btn-primary">Close</button>
+            </div>
         </div>
     </div>
-</div>
 
-<!-- Cordova Scripts -->
-<script type="text/javascript" src="cordova.js"></script>
-<script type="text/javascript" src="js/index.js"></script>
-<script type="text/javascript" src="js/work.js"></script>
-<script type="text/javascript" src="js/adhd.js"></script>
-<script type="text/javascript" src="js/memory.js"></script>
+    <!-- BURNOUT SUGGESTIONS MODAL -->
+    <div id="burnoutModal" class="modal">
+        <div class="modal-content">
+            <h3>🧘 Burnout Prevention Suggestions</h3>
+            <div id="burnoutSuggestionsList">
+                <!-- Populated by JS -->
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeBurnoutModal()" class="btn-primary">Got It</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CELEBRATION MODAL (ADHD Mode) -->
+    <div id="celebrationModal" class="modal celebration-modal">
+        <div class="modal-content celebration-content">
+            <div class="confetti">🎉</div>
+            <h2 id="celebrationTitle">Amazing Work!</h2>
+            <p id="celebrationMessage">You completed a task!</p>
+            <div class="streak-display" id="streakDisplay" style="display: none;">
+                <h3>🔥 <span id="celebrationStreak">0</span> Day Streak!</h3>
+            </div>
+            <button onclick="closeCelebration()" class="btn-primary">Continue</button>
+        </div>
+    </div>
+
+    <!-- AUDIT LOG MODAL (Week 10) -->
+    <div id="auditLogModal" class="modal">
+        <div class="modal-content">
+            <h3>📋 Audit Log</h3>
+            <div id="auditLogContent" class="audit-log-content">
+                <!-- Populated by JavaScript -->
+            </div>
+            <div class="modal-buttons">
+                <button onclick="closeAuditLog()" class="btn-primary">Close</button>
+                <button onclick="exportAuditLog()" class="btn-secondary">Export Log</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cordova Scripts -->
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="js/index.js"></script>
+    <script type="text/javascript" src="js/work.js"></script>
+    <script type="text/javascript" src="js/adhd.js"></script>
+    <script type="text/javascript" src="js/memory.js"></script>
 </body>
 </html>

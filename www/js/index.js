@@ -16,6 +16,13 @@ let currentCommentReminderId = null;
 let dayOfWeekChart = null;
 let modeChart = null;
 let trendChart = null;
+// PHASE 1 & 2: New Global Variables
+let customTemplates = [];
+let voiceRecognition = null;
+let isRecordingVoice = false;
+let userProductivityPatterns = null;
+let estimationData = [];
+
 
 // Settings
 let appSettings = {
@@ -65,8 +72,8 @@ function onDeviceReady() {
     applyTheme(appSettings.theme);
     applyFontSize(appSettings.fontSize);
 
-    // Check if onboarding needed
-    checkOnboarding();
+    // Initialize app first (attach event listeners)
+    initializeApp();
 
     // Check for PIN lock
     if (appSettings.pinEnabled && currentPin) {
@@ -74,8 +81,8 @@ function onDeviceReady() {
         return;
     }
 
-    // Initialize app
-    initializeApp();
+    // Then check if onboarding needed (this will show appropriate view)
+    checkOnboarding();
 }
 
 function initializeApp() {
@@ -92,10 +99,971 @@ function initializeApp() {
     console.log('✅ App initialized successfully');
 }
 
+// ============= PHASE 1: VOICE INPUT =============
+function initializeVoiceInput() {
+    const useVoiceCheckbox = document.getElementById('useVoiceInput');
+    if (!useVoiceCheckbox) return;
+
+    useVoiceCheckbox.addEventListener('change', function() {
+        if (this.checked) {
+            startVoiceInput();
+        } else {
+            stopVoiceInput();
+        }
+    });
+
+    // Check if browser supports Speech Recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        voiceRecognition = new SpeechRecognition();
+        voiceRecognition.continuous = false;
+        voiceRecognition.interimResults = false;
+        voiceRecognition.lang = 'en-US';
+
+        voiceRecognition.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            console.log('Voice input:', transcript);
+
+            // Show NLP input and populate it
+            document.getElementById('nlpInput').style.display = 'block';
+            document.getElementById('nlpText').value = transcript;
+
+            // Auto-parse if confident
+            parseNaturalLanguage();
+
+            // Stop voice input
+            document.getElementById('useVoiceInput').checked = false;
+            stopVoiceInput();
+        };
+
+        voiceRecognition.onerror = function(event) {
+            console.error('Voice recognition error:', event.error);
+            alert('Voice recognition error: ' + event.error);
+            document.getElementById('useVoiceInput').checked = false;
+            stopVoiceInput();
+        };
+    } else {
+        // Disable voice input if not supported
+        useVoiceCheckbox.disabled = true;
+        useVoiceCheckbox.parentElement.title = 'Voice input not supported in this browser';
+    }
+}
+
+function startVoiceInput() {
+    if (!voiceRecognition) {
+        alert('Voice recognition not available');
+        return;
+    }
+
+    isRecordingVoice = true;
+
+    // Show recording indicator
+    const indicator = document.createElement('div');
+    indicator.id = 'voiceIndicator';
+    indicator.className = 'voice-recording-indicator';
+    indicator.textContent = 'Listening... Speak your reminder';
+    document.querySelector('.input-section').insertBefore(indicator, document.getElementById('title'));
+
+    try {
+        voiceRecognition.start();
+        logAudit('Voice input started', 'user');
+    } catch (error) {
+        console.error('Failed to start voice recognition:', error);
+        stopVoiceInput();
+    }
+}
+
+function stopVoiceInput() {
+    isRecordingVoice = false;
+
+    if (voiceRecognition) {
+        try {
+            voiceRecognition.stop();
+        } catch (error) {
+            console.log('Voice recognition already stopped');
+        }
+    }
+
+    // Remove indicator
+    const indicator = document.getElementById('voiceIndicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+// ============= PHASE 1: NATURAL LANGUAGE PROCESSING =============
+function parseNaturalLanguage() {
+    const nlpText = document.getElementById('nlpText').value.trim().toLowerCase();
+
+    if (!nlpText) {
+        alert('Please enter a reminder description');
+        return;
+    }
+
+    console.log('Parsing:', nlpText);
+
+    // Extract title (everything before time/date indicators or "to" verb)
+    let title = nlpText;
+    let description = '';
+    let datetime = null;
+    let priority = 'medium';
+
+    // Common patterns
+    const patterns = {
+        // "Remind me to [ACTION] [TIME]"
+        remindMeTo: /remind me to (.*?)( at | on | tomorrow | today | next | in )/i,
+        // "to [ACTION]"
+        toAction: /^to (.*?)( at | on | tomorrow | today | next | in |$)/i,
+        // Direct action
+        action: /^(.*?)( at | on | tomorrow | today | next | in |$)/i
+    };
+
+    // Try to extract the main action
+    for (const [name, pattern] of Object.entries(patterns)) {
+        const match = nlpText.match(pattern);
+        if (match && match[1]) {
+            title = match[1].trim();
+            title = title.charAt(0).toUpperCase() + title.slice(1);
+            break;
+        }
+    }
+
+    // Extract time/date
+    const now = new Date();
+    let targetDate = new Date();
+
+    // Check for specific times
+    const timeMatch = nlpText.match(/(\d{1,2}):?(\d{2})?\s*(am|pm)?/i);
+    if (timeMatch) {
+        let hours = parseInt(timeMatch[1]);
+        const minutes = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+        const ampm = timeMatch[3] ? timeMatch[3].toLowerCase() : null;
+
+        if (ampm === 'pm' && hours < 12) hours += 12;
+        if (ampm === 'am' && hours === 12) hours = 0;
+
+        targetDate.setHours(hours, minutes, 0, 0);
+
+        // If time is in the past, move to tomorrow
+        if (targetDate < now) {
+            targetDate.setDate(targetDate.getDate() + 1);
+        }
+    }
+
+    // Check for relative times
+    if (nlpText.includes('tomorrow')) {
+        targetDate.setDate(targetDate.getDate() + 1);
+        if (!timeMatch) targetDate.setHours(9, 0, 0, 0); // Default to 9 AM
+    } else if (nlpText.includes('today')) {
+        if (!timeMatch) targetDate.setHours(now.getHours() + 1, 0, 0, 0); // 1 hour from now
+    } else if (nlpText.match(/in (\d+) (hour|hours|minute|minutes)/i)) {
+        const match = nlpText.match(/in (\d+) (hour|hours|minute|minutes)/i);
+        const amount = parseInt(match[1]);
+        const unit = match[2];
+
+        if (unit.startsWith('hour')) {
+            targetDate.setHours(targetDate.getHours() + amount);
+        } else {
+            targetDate.setMinutes(targetDate.getMinutes() + amount);
+        }
+    } else if (nlpText.match(/next (monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i)) {
+        const match = nlpText.match(/next (monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
+        const dayName = match[1].toLowerCase();
+        const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const targetDay = days.indexOf(dayName);
+        const currentDay = targetDate.getDay();
+        let daysToAdd = (targetDay - currentDay + 7) % 7;
+        if (daysToAdd === 0) daysToAdd = 7; // Next week
+
+        targetDate.setDate(targetDate.getDate() + daysToAdd);
+        if (!timeMatch) targetDate.setHours(9, 0, 0, 0);
+    }
+
+    // Check for priority keywords
+    if (nlpText.includes('urgent') || nlpText.includes('important') || nlpText.includes('asap')) {
+        priority = 'high';
+    } else if (nlpText.includes('low priority') || nlpText.includes('when I can')) {
+        priority = 'low';
+    }
+
+    // Populate form fields
+    document.getElementById('title').value = title;
+    document.getElementById('text').value = description || 'Created from voice/text input: ' + nlpText;
+
+    // Format datetime for input
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    const hours = String(targetDate.getHours()).padStart(2, '0');
+    const minutes = String(targetDate.getMinutes()).padStart(2, '0');
+
+    document.getElementById('datetime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+    // Set priority if visible
+    const priorityEl = document.getElementById('priority');
+    if (priorityEl && priorityEl.style.display !== 'none') {
+        priorityEl.value = priority;
+    }
+
+    // Clear NLP input
+    document.getElementById('nlpText').value = '';
+    document.getElementById('nlpInput').style.display = 'none';
+
+    logAudit('Natural language parsed: ' + nlpText, 'user');
+    alert('✓ Reminder details filled! Review and click Schedule.');
+}
+
+// Toggle NLP input visibility
+function toggleNLPInput() {
+    const nlpInput = document.getElementById('nlpInput');
+    if (!nlpInput) return;
+
+    const isVisible = nlpInput.style.display !== 'none';
+    nlpInput.style.display = isVisible ? 'none' : 'block';
+}
+
+// ============= PHASE 1: TEMPLATE SYSTEM =============
+function initializeTemplates() {
+    loadCustomTemplates();
+    loadBuiltInTemplates();
+}
+
+function loadCustomTemplates() {
+    const saved = localStorage.getItem('customTemplates');
+    if (saved) {
+        customTemplates = JSON.parse(saved);
+        updateTemplateSelect();
+    }
+}
+
+function loadBuiltInTemplates() {
+    // Built-in templates are defined in HTML, just ensure they're available
+    console.log('Built-in templates loaded');
+}
+
+function updateTemplateSelect() {
+    const select = document.getElementById('templateSelect');
+    if (!select) return;
+
+    // Add custom templates to select
+    const existingCustomGroup = select.querySelector('optgroup[label="Custom Templates"]');
+    if (existingCustomGroup) {
+        existingCustomGroup.remove();
+    }
+
+    if (customTemplates.length > 0) {
+        const customGroup = document.createElement('optgroup');
+        customGroup.label = 'Custom Templates';
+
+        customTemplates.forEach((template, index) => {
+            const option = document.createElement('option');
+            option.value = 'custom_' + index;
+            option.textContent = template.name;
+            customGroup.appendChild(option);
+        });
+
+        select.appendChild(customGroup);
+    }
+}
+
+function loadTemplate() {
+    const select = document.getElementById('templateSelect');
+    const templateId = select.value;
+
+    if (!templateId) return;
+
+    let template = null;
+
+    // Check if it's a custom template
+    if (templateId.startsWith('custom_')) {
+        const index = parseInt(templateId.replace('custom_', ''));
+        template = customTemplates[index];
+    } else {
+        // Load built-in template
+        template = getBuiltInTemplate(templateId);
+    }
+
+    if (!template) {
+        console.error('Template not found:', templateId);
+        return;
+    }
+
+    // Populate form with template data
+    document.getElementById('title').value = template.title || '';
+    document.getElementById('text').value = template.description || '';
+
+    if (template.priority) {
+        const priorityEl = document.getElementById('priority');
+        if (priorityEl && priorityEl.style.display !== 'none') {
+            priorityEl.value = template.priority;
+        }
+    }
+
+    if (template.project) {
+        const projectEl = document.getElementById('project');
+        if (projectEl && projectEl.style.display !== 'none') {
+            projectEl.value = template.project;
+        }
+    }
+
+    if (template.defaultTime) {
+        const now = new Date();
+        now.setHours(template.defaultTime.hours, template.defaultTime.minutes, 0, 0);
+
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+
+        document.getElementById('datetime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+
+    // Load subtasks if template has them
+    if (template.subtasks && template.subtasks.length > 0) {
+        document.getElementById('subtasksSection').style.display = 'block';
+        document.getElementById('subtasksList').innerHTML = '';
+
+        template.subtasks.forEach(subtask => {
+            addSubtaskToList(subtask);
+        });
+    }
+
+    logAudit('Template loaded: ' + template.name, 'user');
+}
+
+function getBuiltInTemplate(templateId) {
+    const templates = {
+        // Work templates
+        work_meeting: {
+            name: 'Weekly Team Meeting',
+            title: 'Weekly Team Meeting',
+            description: 'Attend weekly team standup meeting',
+            priority: 'high',
+            project: 'work',
+            defaultTime: { hours: 14, minutes: 0 },
+            recurring: 'weekly'
+        },
+        work_deadline: {
+            name: 'Project Deadline',
+            title: 'Project Deadline',
+            description: 'Submit project deliverables',
+            priority: 'high',
+            project: 'work'
+        },
+        work_invoice: {
+            name: 'Invoice Due',
+            title: 'Invoice Due',
+            description: 'Send invoice to client',
+            priority: 'medium',
+            project: 'work'
+        },
+        work_review: {
+            name: 'Performance Review',
+            title: 'Performance Review',
+            description: 'Prepare for and attend performance review meeting',
+            priority: 'high',
+            project: 'work'
+        },
+
+        // ADHD templates
+        adhd_morning: {
+            name: 'Morning Routine',
+            title: 'Morning Routine',
+            description: 'Complete morning routine',
+            priority: 'high',
+            defaultTime: { hours: 7, minutes: 0 },
+            subtasks: ['Brush teeth', 'Take medication', 'Eat breakfast', 'Review today\'s tasks']
+        },
+        adhd_medication: {
+            name: 'Take Medication',
+            title: 'Take Medication',
+            description: 'Remember to take ADHD medication',
+            priority: 'high',
+            defaultTime: { hours: 8, minutes: 0 }
+        },
+        adhd_pomodoro: {
+            name: 'Pomodoro Session',
+            title: 'Pomodoro Focus Session',
+            description: '25 minutes of focused work',
+            priority: 'medium',
+            repeatInterval: 30
+        },
+        adhd_break: {
+            name: 'Take Break',
+            title: 'Take a Break',
+            description: 'Step away and rest for 5 minutes',
+            priority: 'medium',
+            repeatInterval: 25
+        },
+
+        // Memory templates
+        memory_pills: {
+            name: 'Take Pills',
+            title: 'Take Your Pills',
+            description: 'Time to take your daily medication',
+            priority: 'high',
+            defaultTime: { hours: 9, minutes: 0 },
+            requireAcknowledgment: true
+        },
+        memory_water: {
+            name: 'Drink Water',
+            title: 'Drink Water',
+            description: 'Remember to stay hydrated',
+            priority: 'medium',
+            repeatInterval: 120
+        },
+        memory_call: {
+            name: 'Call Caregiver',
+            title: 'Call Caregiver',
+            description: 'Time for daily check-in call',
+            priority: 'high',
+            defaultTime: { hours: 10, minutes: 0 }
+        },
+        memory_meal: {
+            name: 'Meal Time',
+            title: 'Meal Time',
+            description: 'Time to eat',
+            priority: 'high',
+            defaultTime: { hours: 12, minutes: 0 }
+        }
+    };
+
+    return templates[templateId] || null;
+}
+
+function showCreateTemplate() {
+    document.getElementById('templateModal').classList.add('active');
+}
+
+function cancelTemplateCreation() {
+    document.getElementById('templateModal').classList.remove('active');
+
+    // Clear form
+    document.getElementById('templateName').value = '';
+    document.getElementById('templateTitle').value = '';
+    document.getElementById('templateDescription').value = '';
+    document.getElementById('templatePriority').value = 'medium';
+    document.getElementById('templateCategory').value = 'work';
+    document.getElementById('templateHasSubtasks').checked = false;
+}
+
+function saveCustomTemplate() {
+    const name = document.getElementById('templateName').value.trim();
+    const title = document.getElementById('templateTitle').value.trim();
+    const description = document.getElementById('templateDescription').value.trim();
+    const priority = document.getElementById('templatePriority').value;
+    const category = document.getElementById('templateCategory').value;
+    const hasSubtasks = document.getElementById('templateHasSubtasks').checked;
+
+    if (!name || !title) {
+        alert('Please provide a template name and title');
+        return;
+    }
+
+    const template = {
+        name: name,
+        title: title,
+        description: description,
+        priority: priority,
+        category: category,
+        subtasks: hasSubtasks ? [] : null,
+        createdAt: new Date().toISOString()
+    };
+
+    customTemplates.push(template);
+    localStorage.setItem('customTemplates', JSON.stringify(customTemplates));
+
+    updateTemplateSelect();
+    cancelTemplateCreation();
+
+    alert('✓ Template saved successfully!');
+    logAudit('Custom template created: ' + name, 'user');
+}
+
+// ============= PHASE 1: SUBTASK SYSTEM =============
+let currentSubtasks = [];
+
+function initializeSubtasks() {
+    // Show subtasks section when needed
+    console.log('Subtasks system initialized');
+}
+
+function addSubtask() {
+    const subtasksSection = document.getElementById('subtasksSection');
+    const subtasksList = document.getElementById('subtasksList');
+
+    subtasksSection.style.display = 'block';
+
+    const subtaskItem = document.createElement('div');
+    subtaskItem.className = 'subtask-item';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = 'Enter subtask description';
+    input.className = 'subtask-input';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '✕';
+    removeBtn.type = 'button';
+    removeBtn.onclick = function() {
+        subtaskItem.remove();
+        updateSubtasksCount();
+    };
+
+    subtaskItem.appendChild(input);
+    subtaskItem.appendChild(removeBtn);
+    subtasksList.appendChild(input);
+
+    input.focus();
+    updateSubtasksCount();
+}
+
+function addSubtaskToList(text) {
+    const subtasksList = document.getElementById('subtasksList');
+
+    const subtaskItem = document.createElement('div');
+    subtaskItem.className = 'subtask-item';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = text;
+    input.className = 'subtask-input';
+
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = '✕';
+    removeBtn.type = 'button';
+    removeBtn.onclick = function() {
+        subtaskItem.remove();
+        updateSubtasksCount();
+    };
+
+    subtaskItem.appendChild(input);
+    subtaskItem.appendChild(removeBtn);
+    subtasksList.appendChild(subtaskItem);
+
+    updateSubtasksCount();
+}
+
+function getSubtasks() {
+    const inputs = document.querySelectorAll('.subtask-input');
+    const subtasks = [];
+
+    inputs.forEach(input => {
+        const text = input.value.trim();
+        if (text) {
+            subtasks.push({
+                text: text,
+                completed: false,
+                id: Date.now() + Math.random()
+            });
+        }
+    });
+
+    return subtasks;
+}
+
+function updateSubtasksCount() {
+    const inputs = document.querySelectorAll('.subtask-input');
+    const count = Array.from(inputs).filter(i => i.value.trim()).length;
+
+    if (count === 0) {
+        document.getElementById('subtasksSection').style.display = 'none';
+    }
+}
+
+function clearSubtasks() {
+    document.getElementById('subtasksList').innerHTML = '';
+    document.getElementById('subtasksSection').style.display = 'none';
+}
+
+// ============= PHASE 1: SMART SCHEDULING ASSISTANT =============
+function initializeSmartScheduling() {
+    analyzeProductivityPatterns();
+}
+
+function analyzeProductivityPatterns() {
+    // Analyze completion history to find patterns
+    const completed = reminders.filter(r => r.completed && r.completedDate);
+
+    if (completed.length < 5) {
+        userProductivityPatterns = null;
+        return;
+    }
+
+    const hourCounts = {};
+    const dayCounts = {};
+
+    completed.forEach(r => {
+        const completedDate = new Date(r.completedDate);
+        const hour = completedDate.getHours();
+        const day = completedDate.getDay();
+
+        hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+        dayCounts[day] = (dayCounts[day] || 0) + 1;
+    });
+
+    // Find peak productivity hours
+    const peakHour = Object.keys(hourCounts).reduce((a, b) =>
+        hourCounts[a] > hourCounts[b] ? a : b
+    );
+
+    // Find best days
+    const bestDay = Object.keys(dayCounts).reduce((a, b) =>
+        dayCounts[a] > dayCounts[b] ? a : b
+    );
+
+    userProductivityPatterns = {
+        peakHour: parseInt(peakHour),
+        bestDay: parseInt(bestDay),
+        hourCounts: hourCounts,
+        dayCounts: dayCounts
+    };
+
+    console.log('Productivity patterns analyzed:', userProductivityPatterns);
+}
+
+function showSmartSuggestions(taskTitle) {
+    if (!userProductivityPatterns) {
+        console.log('Not enough data for suggestions');
+        return;
+    }
+
+    const suggestions = generateSmartSuggestions(taskTitle);
+
+    if (suggestions.length === 0) {
+        return;
+    }
+
+    const modal = document.getElementById('smartSuggestionsModal');
+    const list = document.getElementById('smartSuggestionsList');
+
+    list.innerHTML = suggestions.map((suggestion, index) => `
+        <div class="smart-suggestion-card" onclick="applySuggestion(${index})">
+            <h4>${suggestion.title}</h4>
+            <p><strong>Suggested Time:</strong> ${suggestion.time}</p>
+            <p class="suggestion-reason">${suggestion.reason}</p>
+        </div>
+    `).join('');
+
+    modal.classList.add('active');
+
+    // Store suggestions temporarily
+    window.currentSuggestions = suggestions;
+}
+
+function generateSmartSuggestions(taskTitle) {
+    const suggestions = [];
+    const now = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+    // Suggestion 1: Peak productivity hour today
+    if (userProductivityPatterns.peakHour) {
+        const peakTime = new Date(now);
+        peakTime.setHours(userProductivityPatterns.peakHour, 0, 0, 0);
+
+        if (peakTime > now) {
+            suggestions.push({
+                title: '🎯 Peak Productivity Time',
+                time: peakTime.toLocaleString(),
+                datetime: peakTime,
+                reason: `You typically complete most tasks around ${userProductivityPatterns.peakHour}:00. Schedule during your peak focus time!`
+            });
+        }
+    }
+
+    // Suggestion 2: Best day of week
+    if (userProductivityPatterns.bestDay !== undefined) {
+        const bestDayDate = new Date(now);
+        const currentDay = now.getDay();
+        let daysToAdd = (userProductivityPatterns.bestDay - currentDay + 7) % 7;
+        if (daysToAdd === 0) daysToAdd = 7; // Next week
+
+        bestDayDate.setDate(bestDayDate.getDate() + daysToAdd);
+        bestDayDate.setHours(userProductivityPatterns.peakHour || 10, 0, 0, 0);
+
+        suggestions.push({
+            title: '📅 Your Best Day',
+            time: bestDayDate.toLocaleString(),
+            datetime: bestDayDate,
+            reason: `${dayNames[userProductivityPatterns.bestDay]} is your most productive day based on completion history.`
+        });
+    }
+
+    // Suggestion 3: Tomorrow morning (fresh start)
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(9, 0, 0, 0);
+
+    suggestions.push({
+        title: '🌅 Fresh Start Tomorrow',
+        time: tomorrow.toLocaleString(),
+        datetime: tomorrow,
+        reason: 'Start your day with this task for maximum focus and energy.'
+    });
+
+    // Suggestion 4: Check for conflicts
+    const upcomingReminders = reminders.filter(r => {
+        const remindDate = new Date(r.datetime);
+        return !r.completed && remindDate > now && remindDate < new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    });
+
+    if (upcomingReminders.length > 0) {
+        // Find a gap in schedule
+        upcomingReminders.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+
+        // Look for 2-hour gap
+        for (let i = 0; i < upcomingReminders.length - 1; i++) {
+            const current = new Date(upcomingReminders[i].datetime);
+            const next = new Date(upcomingReminders[i + 1].datetime);
+            const gap = (next - current) / (1000 * 60 * 60); // hours
+
+            if (gap >= 2) {
+                const gapTime = new Date(current.getTime() + (60 * 60 * 1000)); // 1 hour after current
+
+                suggestions.push({
+                    title: '📊 Fill Schedule Gap',
+                    time: gapTime.toLocaleString(),
+                    datetime: gapTime,
+                    reason: `Found a ${Math.floor(gap)}-hour gap in your schedule. Optimal time to fit this in!`
+                });
+                break;
+            }
+        }
+    }
+
+    return suggestions.slice(0, 4); // Return top 4 suggestions
+}
+
+function applySuggestion(index) {
+    const suggestion = window.currentSuggestions[index];
+
+    if (!suggestion) return;
+
+    const datetime = suggestion.datetime;
+    const year = datetime.getFullYear();
+    const month = String(datetime.getMonth() + 1).padStart(2, '0');
+    const day = String(datetime.getDate()).padStart(2, '0');
+    const hours = String(datetime.getHours()).padStart(2, '0');
+    const minutes = String(datetime.getMinutes()).padStart(2, '0');
+
+    document.getElementById('datetime').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+    closeSmartSuggestions();
+
+    alert('✓ Smart suggestion applied! Review and schedule.');
+    logAudit('Smart suggestion applied: ' + suggestion.title, 'user');
+}
+
+function closeSmartSuggestions() {
+    document.getElementById('smartSuggestionsModal').classList.remove('active');
+    window.currentSuggestions = null;
+}
+
+// Detect conflicts
+function detectScheduleConflicts(datetime) {
+    const newTime = new Date(datetime);
+    const conflicts = [];
+
+    reminders.filter(r => !r.completed).forEach(r => {
+        const existingTime = new Date(r.datetime);
+        const timeDiff = Math.abs(newTime - existingTime) / (1000 * 60); // minutes
+
+        if (timeDiff < 30) { // Within 30 minutes
+            conflicts.push(r);
+        }
+    });
+
+    return conflicts;
+}
+
+// ============= PHASE 1: RECURRING PATTERNS =============
+function handleRecurringChange() {
+    const pattern = document.getElementById('recurringPattern').value;
+    const customOptions = document.getElementById('customRecurringOptions');
+
+    if (pattern === 'custom') {
+        customOptions.style.display = 'block';
+    } else {
+        customOptions.style.display = 'none';
+    }
+}
+
+function getRecurringPattern() {
+    const pattern = document.getElementById('recurringPattern').value;
+
+    if (pattern === 'none') {
+        return null;
+    }
+
+    const recurringData = {
+        pattern: pattern,
+        enabled: true
+    };
+
+    if (pattern === 'custom') {
+        const checkedDays = Array.from(document.querySelectorAll('.day-selector input:checked'))
+            .map(input => parseInt(input.value));
+
+        if (checkedDays.length === 0) {
+            return null;
+        }
+
+        recurringData.customDays = checkedDays;
+    }
+
+    return recurringData;
+}
+
+function scheduleRecurringReminder(baseReminder, pattern) {
+    // This will create multiple scheduled notifications based on pattern
+    const baseDate = new Date(baseReminder.datetime);
+    const now = new Date();
+    const endDate = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000)); // 90 days ahead
+
+    const recurringDates = [];
+
+    switch(pattern.pattern) {
+        case 'daily':
+            for (let d = new Date(baseDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                if (d > now) {
+                    recurringDates.push(new Date(d));
+                }
+            }
+            break;
+
+        case 'weekdays':
+            for (let d = new Date(baseDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const day = d.getDay();
+                if (d > now && day >= 1 && day <= 5) {
+                    recurringDates.push(new Date(d));
+                }
+            }
+            break;
+
+        case 'weekends':
+            for (let d = new Date(baseDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const day = d.getDay();
+                if (d > now && (day === 0 || day === 6)) {
+                    recurringDates.push(new Date(d));
+                }
+            }
+            break;
+
+        case 'weekly':
+            for (let d = new Date(baseDate); d <= endDate; d.setDate(d.getDate() + 7)) {
+                if (d > now) {
+                    recurringDates.push(new Date(d));
+                }
+            }
+            break;
+
+        case 'biweekly':
+            for (let d = new Date(baseDate); d <= endDate; d.setDate(d.getDate() + 14)) {
+                if (d > now) {
+                    recurringDates.push(new Date(d));
+                }
+            }
+            break;
+
+        case 'monthly':
+            for (let d = new Date(baseDate); d <= endDate; d.setMonth(d.getMonth() + 1)) {
+                if (d > now) {
+                    recurringDates.push(new Date(d));
+                }
+            }
+            break;
+
+        case 'custom':
+            if (pattern.customDays) {
+                for (let d = new Date(baseDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                    if (d > now && pattern.customDays.includes(d.getDay())) {
+                        recurringDates.push(new Date(d));
+                    }
+                }
+            }
+            break;
+    }
+
+    // Schedule first 30 occurrences (to avoid overwhelming notification system)
+    const limit = Math.min(recurringDates.length, 30);
+
+    for (let i = 0; i < limit; i++) {
+        const scheduleDate = recurringDates[i];
+        const recurringId = parseInt(`${baseReminder.id}${i + 1}`);
+
+        cordova.plugins.notification.local.schedule({
+            id: recurringId,
+            title: `🔁 ${baseReminder.title}`,
+            text: baseReminder.text,
+            trigger: { at: scheduleDate },
+            foreground: true
+        });
+    }
+
+    console.log(`Scheduled ${limit} recurring reminders`);
+    return recurringDates.length;
+}
+
+// ============= PHASE 1: LOCATION-BASED REMINDERS =============
+function initializeLocationFeatures() {
+    const useLocationCheckbox = document.getElementById('useLocation');
+    if (!useLocationCheckbox) return;
+
+    useLocationCheckbox.addEventListener('change', function() {
+        const locationOptions = document.getElementById('locationOptions');
+        locationOptions.style.display = this.checked ? 'block' : 'none';
+    });
+}
+
+function getCurrentLocation() {
+    if (!navigator.geolocation) {
+        alert('Geolocation is not supported by your browser');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            // Use reverse geocoding to get address (would need API in production)
+            document.getElementById('locationAddress').value = `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+
+            alert('✓ Current location captured!');
+            logAudit('Location captured: ' + lat + ',' + lon, 'user');
+        },
+        (error) => {
+            console.error('Geolocation error:', error);
+            alert('Could not get location: ' + error.message);
+        }
+    );
+}
+
+function getLocationData() {
+    const useLocation = document.getElementById('useLocation').checked;
+
+    if (!useLocation) return null;
+
+    const address = document.getElementById('locationAddress').value.trim();
+    const trigger = document.getElementById('locationTrigger').value;
+
+    if (!address) return null;
+
+    return {
+        address: address,
+        trigger: trigger, // 'arrive' or 'leave'
+        enabled: true
+    };
+}
+
 // ============= EVENT LISTENERS =============
 function setupEventListeners() {
+    console.log('📌 setupEventListeners() called');
+
     // Mode card click handlers
     const modeCards = document.querySelectorAll('.mode-card');
+    console.log('  → Mode cards found:', modeCards.length);
     modeCards.forEach((card) => {
         card.addEventListener('click', function() {
             const mode = this.getAttribute('data-mode');
@@ -108,44 +1076,89 @@ function setupEventListeners() {
 
     // Settings button
     const settingsBtn = document.getElementById('settingsBtnTab');
+    console.log('  → Settings button:', settingsBtn ? 'found' : 'NOT FOUND');
     if (settingsBtn) {
-        settingsBtn.addEventListener('click', showSettings);
+        settingsBtn.addEventListener('click', function() {
+            console.log('🖱️ SETTINGS BUTTON CLICKED');
+            if (typeof showSettings === 'function') {
+                showSettings();
+            } else {
+                console.error('❌ showSettings function not defined');
+            }
+        });
     }
 
     // Tab buttons
     const tabs = document.querySelectorAll('.nav-tab');
-    tabs.forEach(tab => {
+    console.log('  → Nav tabs found:', tabs.length);
+    tabs.forEach((tab, index) => {
+        const tabName = tab.getAttribute('data-tab');
+        console.log(`     Tab ${index}: ${tabName}`);
         tab.addEventListener('click', function() {
-            const tabName = this.getAttribute('data-tab');
-            showTab(tabName);
+            const clickedTab = this.getAttribute('data-tab');
+            console.log('🖱️ TAB CLICKED:', clickedTab);
+            if (typeof showTab === 'function') {
+                showTab(clickedTab);
+            } else {
+                console.error('❌ showTab function not defined');
+            }
         });
     });
 
     // Schedule button
     const scheduleBtn = document.getElementById('scheduleBtn');
+    console.log('  → Schedule button:', scheduleBtn ? 'found' : 'NOT FOUND');
     if (scheduleBtn) {
-        scheduleBtn.addEventListener('click', scheduleReminder);
+        scheduleBtn.addEventListener('click', function() {
+            console.log('🖱️ SCHEDULE BUTTON CLICKED');
+            if (typeof scheduleReminder === 'function') {
+                scheduleReminder();
+            } else {
+                console.error('❌ scheduleReminder function not defined');
+            }
+        });
     }
 
     // Filter button
     const filterBtn = document.getElementById('filterBtn');
+    console.log('  → Filter button:', filterBtn ? 'found' : 'NOT FOUND');
     if (filterBtn) {
-        filterBtn.addEventListener('click', toggleFilters);
+        filterBtn.addEventListener('click', function() {
+            if (typeof toggleFilters === 'function') {
+                toggleFilters();
+            } else {
+                console.error('❌ toggleFilters function not defined');
+            }
+        });
     }
 
     // Export button
     const exportBtn = document.getElementById('exportBtn');
+    console.log('  → Export button:', exportBtn ? 'found' : 'NOT FOUND');
     if (exportBtn) {
-        exportBtn.addEventListener('click', exportAllData);
+        exportBtn.addEventListener('click', function() {
+            if (typeof exportAllData === 'function') {
+                exportAllData();
+            } else {
+                console.error('❌ exportAllData function not defined');
+            }
+        });
     }
 
     // Tutorial button
     const tutorialBtn = document.getElementById('tutorialBtn');
+    console.log('  → Tutorial button:', tutorialBtn ? 'found' : 'NOT FOUND');
     if (tutorialBtn) {
-        tutorialBtn.addEventListener('click', restartTutorial);
+        tutorialBtn.addEventListener('click', function() {
+            if (typeof restartTutorial === 'function') {
+                restartTutorial();
+            } else {
+                console.error('❌ restartTutorial function not defined');
+            }
+        });
     }
 
-    console.log('Event listeners attached');
+    console.log('✅ setupEventListeners() complete');
 }
 
 // ============= MODE MANAGEMENT =============
@@ -725,7 +1738,6 @@ function scheduleReminder() {
     const datetimeStr = document.getElementById('datetime').value;
     const repeatMinutes = parseInt(document.getElementById('repeatInterval').value);
 
-    // UPDATED: Better validation without extra alert
     if (!title || !text || !datetimeStr) {
         alert('Please fill in all required fields (Title, Description, and Date/Time).');
         return;
@@ -737,17 +1749,35 @@ function scheduleReminder() {
         return;
     }
 
+    // Check for conflicts
+    const conflicts = detectScheduleConflicts(datetime);
+    if (conflicts.length > 0) {
+        const conflictTitles = conflicts.map(r => r.title).join(', ');
+        if (!confirm(`Warning: This conflicts with: ${conflictTitles}.\n\nSchedule anyway?`)) {
+            return;
+        }
+    }
+
     const id = Date.now();
 
-    // Get priority (if applicable)
+    // Get priority
     const priorityEl = document.getElementById('priority');
     const priority = priorityEl && priorityEl.style.display !== 'none' ?
         priorityEl.value : 'medium';
 
-    // Get project (if applicable)
+    // Get project
     const projectEl = document.getElementById('project');
     const project = projectEl && projectEl.style.display !== 'none' ?
         projectEl.value : 'none';
+
+    // PHASE 1: Get subtasks
+    const subtasks = getSubtasks();
+
+    // PHASE 1: Get recurring pattern
+    const recurring = getRecurringPattern();
+
+    // PHASE 1: Get location data
+    const location = getLocationData();
 
     // Schedule the notification
     cordova.plugins.notification.local.schedule({
@@ -761,23 +1791,33 @@ function scheduleReminder() {
         foreground: true
     });
 
-    // UPDATED: Save reminder with mode and comments array
+    // Save reminder
     const reminder = {
         id: id,
         title: title,
         text: text,
         datetime: datetime.toISOString(),
         repeatMinutes: repeatMinutes || 0,
-        mode: currentMode, // ADDED: Store current mode
+        mode: currentMode,
         priority: priority,
         project: project,
         completed: false,
         completedDate: null,
-        comments: [] // ADDED: Initialize comments array
+        comments: [],
+        subtasks: subtasks, // PHASE 1
+        recurring: recurring, // PHASE 1
+        location: location // PHASE 1
     };
 
     reminders.push(reminder);
     localStorage.setItem('reminders', JSON.stringify(reminders));
+
+    // PHASE 1: Schedule recurring if applicable
+    if (recurring) {
+        const count = scheduleRecurringReminder(reminder, recurring);
+        console.log(`Recurring reminder scheduled ${count} times`);
+    }
+
     addReminderToList(reminder);
 
     // Clear form inputs
@@ -785,10 +1825,19 @@ function scheduleReminder() {
     document.getElementById('text').value = '';
     document.getElementById('datetime').value = '';
     document.getElementById('repeatInterval').value = '';
+    document.getElementById('recurringPattern').value = 'none';
+    clearSubtasks();
 
-    // REMOVED: No extra alert here, just log
+    if (document.getElementById('useLocation')) {
+        document.getElementById('useLocation').checked = false;
+        document.getElementById('locationOptions').style.display = 'none';
+    }
+
     console.log('Reminder scheduled successfully:', title);
     logAudit('Reminder created: ' + title, 'user');
+
+    // PHASE 1: Update productivity patterns
+    analyzeProductivityPatterns();
 }
 
 function addReminderToList(reminder) {
@@ -1294,13 +2343,8 @@ function showTab(tabName) {
     });
 
     // ADDED: Refresh content based on tab
-    if (tabName === 'completed') {
-        updateCompletedList();
-    } else if (tabName === 'analytics') {
-        refreshAnalytics();
-    }
-
-    logAudit('Switched to ' + tabName + ' tab', 'user');
+if (tabName === 'analytics') {
+    refreshAnalyticsPhase2(); // Changed from refreshAnalytics()
 }
 
 function loadCompletedTab() {
@@ -1610,6 +2654,538 @@ function createTrendChart(completed, days) {
         }
     });
 }
+
+// ============= PHASE 2: ADVANCED ANALYTICS & INSIGHTS =============
+
+// Productivity Heatmap
+function createProductivityHeatmap() {
+    const heatmapContainer = document.getElementById('productivityHeatmap');
+    if (!heatmapContainer) return;
+
+    const days = 90; // Last 90 days
+    const now = new Date();
+    const heatmapData = [];
+
+    // Generate heatmap for last 90 days
+    for (let i = days - 1; i >= 0; i--) {
+        const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
+        const dateStr = date.toISOString().split('T')[0];
+
+        const tasksOnDay = reminders.filter(r => {
+            if (!r.completed || !r.completedDate) return false;
+            const completedDate = new Date(r.completedDate).toISOString().split('T')[0];
+            return completedDate === dateStr;
+        }).length;
+
+        heatmapData.push({
+            date: dateStr,
+            count: tasksOnDay,
+            day: date.getDay(),
+            weekOfYear: getWeekOfYear(date)
+        });
+    }
+
+    // Render heatmap
+    renderHeatmap(heatmapContainer, heatmapData);
+}
+
+function getWeekOfYear(date) {
+    const onejan = new Date(date.getFullYear(), 0, 1);
+    return Math.ceil((((date - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+}
+
+function renderHeatmap(container, data) {
+    container.innerHTML = '';
+
+    // Group by week
+    const weeks = {};
+    data.forEach(day => {
+        if (!weeks[day.weekOfYear]) weeks[day.weekOfYear] = [];
+        weeks[day.weekOfYear].push(day);
+    });
+
+    // Create heatmap grid
+    const heatmapGrid = document.createElement('div');
+    heatmapGrid.className = 'heatmap-grid';
+
+    // Day labels
+    const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const labelColumn = document.createElement('div');
+    labelColumn.className = 'heatmap-labels';
+    dayLabels.forEach(label => {
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'heatmap-label';
+        labelDiv.textContent = label;
+        labelColumn.appendChild(labelDiv);
+    });
+    heatmapGrid.appendChild(labelColumn);
+
+    // Render weeks
+    Object.keys(weeks).forEach(weekNum => {
+        const weekColumn = document.createElement('div');
+        weekColumn.className = 'heatmap-week';
+
+        // Fill in days for this week
+        const daysInWeek = weeks[weekNum];
+
+        for (let day = 0; day < 7; day++) {
+            const dayData = daysInWeek.find(d => d.day === day);
+            const cell = document.createElement('div');
+            cell.className = 'heatmap-cell';
+
+            if (dayData) {
+                const intensity = Math.min(dayData.count, 10);
+                cell.className += ` intensity-${Math.floor(intensity / 2)}`;
+                cell.title = `${dayData.date}: ${dayData.count} tasks`;
+                cell.setAttribute('data-count', dayData.count);
+            } else {
+                cell.className += ' intensity-0';
+            }
+
+            weekColumn.appendChild(cell);
+        }
+
+        heatmapGrid.appendChild(weekColumn);
+    });
+
+    container.appendChild(heatmapGrid);
+
+    // Add legend
+    const legend = document.createElement('div');
+    legend.className = 'heatmap-legend';
+    legend.innerHTML = `
+        <span>Less</span>
+        <div class="heatmap-cell intensity-0"></div>
+        <div class="heatmap-cell intensity-1"></div>
+        <div class="heatmap-cell intensity-2"></div>
+        <div class="heatmap-cell intensity-3"></div>
+        <div class="heatmap-cell intensity-4"></div>
+        <div class="heatmap-cell intensity-5"></div>
+        <span>More</span>
+    `;
+    container.appendChild(legend);
+}
+
+// Focus Score Calculation
+function calculateFocusScore() {
+    const days = 30;
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+
+    const completed = reminders.filter(r => {
+        if (!r.completed || !r.completedDate) return false;
+        const completedDate = new Date(r.completedDate);
+        return completedDate >= startDate && completedDate <= now;
+    });
+
+    const scheduled = reminders.filter(r => {
+        const reminderDate = new Date(r.datetime);
+        return reminderDate >= startDate && reminderDate <= now;
+    });
+
+    if (scheduled.length === 0) return 0;
+
+    // Calculate components
+    const completionRate = (completed.length / scheduled.length) * 100;
+
+    // On-time completion
+    const onTime = completed.filter(r => {
+        const due = new Date(r.datetime);
+        const completedDate = new Date(r.completedDate);
+        return completedDate <= due;
+    }).length;
+
+    const onTimeRate = completed.length > 0 ? (onTime / completed.length) * 100 : 0;
+
+    // Consistency (tasks completed per day variance)
+    const dailyCounts = {};
+    for (let i = 0; i < days; i++) {
+        const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
+        const dateStr = date.toDateString();
+        dailyCounts[dateStr] = 0;
+    }
+
+    completed.forEach(r => {
+        const dateStr = new Date(r.completedDate).toDateString();
+        if (dailyCounts[dateStr] !== undefined) {
+            dailyCounts[dateStr]++;
+        }
+    });
+
+    const counts = Object.values(dailyCounts);
+    const avgDaily = counts.reduce((a, b) => a + b, 0) / counts.length;
+    const variance = counts.reduce((sum, count) => sum + Math.pow(count - avgDaily, 2), 0) / counts.length;
+    const stdDev = Math.sqrt(variance);
+    const consistency = Math.max(0, 100 - (stdDev * 10));
+
+    // Calculate overall focus score (weighted average)
+    const focusScore = Math.round(
+        (completionRate * 0.4) +
+        (onTimeRate * 0.4) +
+        (consistency * 0.2)
+    );
+
+    return Math.min(100, Math.max(0, focusScore));
+}
+
+// On-Time Rate Calculation
+function calculateOnTimeRate() {
+    const days = 30;
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+
+    const completed = reminders.filter(r => {
+        if (!r.completed || !r.completedDate) return false;
+        const completedDate = new Date(r.completedDate);
+        return completedDate >= startDate && completedDate <= now;
+    });
+
+    if (completed.length === 0) return 0;
+
+    const onTime = completed.filter(r => {
+        const due = new Date(r.datetime);
+        const completedDate = new Date(r.completedDate);
+        return completedDate <= due;
+    }).length;
+
+    return Math.round((onTime / completed.length) * 100);
+}
+
+// Period Comparison
+function generatePeriodComparison() {
+    const now = new Date();
+
+    // This week vs last week
+    const thisWeekStart = new Date(now);
+    thisWeekStart.setDate(now.getDate() - now.getDay());
+    thisWeekStart.setHours(0, 0, 0, 0);
+
+    const lastWeekStart = new Date(thisWeekStart);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+
+    const lastWeekEnd = new Date(thisWeekStart);
+    lastWeekEnd.setMilliseconds(-1);
+
+    const thisWeekTasks = reminders.filter(r => {
+        if (!r.completed || !r.completedDate) return false;
+        const completedDate = new Date(r.completedDate);
+        return completedDate >= thisWeekStart && completedDate <= now;
+    }).length;
+
+    const lastWeekTasks = reminders.filter(r => {
+        if (!r.completed || !r.completedDate) return false;
+        const completedDate = new Date(r.completedDate);
+        return completedDate >= lastWeekStart && completedDate < thisWeekStart;
+    }).length;
+
+    const weekDiff = thisWeekTasks - lastWeekTasks;
+    const weekPercent = lastWeekTasks > 0 ? Math.round((weekDiff / lastWeekTasks) * 100) : 0;
+
+    // This month vs last month
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    const thisMonthTasks = reminders.filter(r => {
+        if (!r.completed || !r.completedDate) return false;
+        const completedDate = new Date(r.completedDate);
+        return completedDate >= thisMonthStart && completedDate <= now;
+    }).length;
+
+    const lastMonthTasks = reminders.filter(r => {
+        if (!r.completed || !r.completedDate) return false;
+        const completedDate = new Date(r.completedDate);
+        return completedDate >= lastMonthStart && completedDate <= lastMonthEnd;
+    }).length;
+
+    const monthDiff = thisMonthTasks - lastMonthTasks;
+    const monthPercent = lastMonthTasks > 0 ? Math.round((monthDiff / lastMonthTasks) * 100) : 0;
+
+    return {
+        week: {
+            thisWeek: thisWeekTasks,
+            lastWeek: lastWeekTasks,
+            diff: weekDiff,
+            percent: weekPercent
+        },
+        month: {
+            thisMonth: thisMonthTasks,
+            lastMonth: lastMonthTasks,
+            diff: monthDiff,
+            percent: monthPercent
+        }
+    };
+}
+
+function displayPeriodComparison() {
+    const comparison = generatePeriodComparison();
+
+    const weekContainer = document.getElementById('weekComparison');
+    const monthContainer = document.getElementById('monthComparison');
+
+    if (weekContainer) {
+        const weekTrend = comparison.week.diff >= 0 ? '📈' : '📉';
+        const weekColor = comparison.week.diff >= 0 ? '#4CAF50' : '#f44336';
+
+        weekContainer.innerHTML = `
+            <div class="comparison-stat">
+                <div class="comparison-value">
+                    <span class="current">${comparison.week.thisWeek}</span> vs
+                    <span class="previous">${comparison.week.lastWeek}</span>
+                </div>
+                <div class="comparison-change" style="color: ${weekColor}">
+                    ${weekTrend} ${comparison.week.diff >= 0 ? '+' : ''}${comparison.week.diff} tasks
+                    (${comparison.week.percent >= 0 ? '+' : ''}${comparison.week.percent}%)
+                </div>
+            </div>
+        `;
+    }
+
+    if (monthContainer) {
+        const monthTrend = comparison.month.diff >= 0 ? '📈' : '📉';
+        const monthColor = comparison.month.diff >= 0 ? '#4CAF50' : '#f44336';
+
+        monthContainer.innerHTML = `
+            <div class="comparison-stat">
+                <div class="comparison-value">
+                    <span class="current">${comparison.month.thisMonth}</span> vs
+                    <span class="previous">${comparison.month.lastMonth}</span>
+                </div>
+                <div class="comparison-change" style="color: ${monthColor}">
+                    ${monthTrend} ${comparison.month.diff >= 0 ? '+' : ''}${comparison.month.diff} tasks
+                    (${comparison.month.percent >= 0 ? '+' : ''}${comparison.month.percent}%)
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Burnout Detection
+function detectBurnout() {
+    const days = 14; // Look at last 2 weeks
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+
+    const recentTasks = reminders.filter(r => {
+        const reminderDate = new Date(r.datetime);
+        return reminderDate >= startDate && reminderDate <= now;
+    });
+
+    const completed = recentTasks.filter(r => r.completed);
+
+    // Calculate daily averages
+    const tasksPerDay = recentTasks.length / days;
+    const completedPerDay = completed.length / days;
+    const completionRate = recentTasks.length > 0 ? (completed.length / recentTasks.length) * 100 : 0;
+
+    // Burnout indicators
+    const indicators = [];
+    let burnoutScore = 0;
+
+    // High task load
+    if (tasksPerDay > 15) {
+        indicators.push('You have a very high task load (averaging ' + tasksPerDay.toFixed(1) + ' tasks per day)');
+        burnoutScore += 30;
+    }
+
+    // Low completion rate
+    if (completionRate < 50 && recentTasks.length > 5) {
+        indicators.push('Your completion rate is low (' + completionRate.toFixed(0) + '%)');
+        burnoutScore += 25;
+    }
+
+    // Check for continuous work (no rest days)
+    const dailyActivity = {};
+    for (let i = 0; i < days; i++) {
+        const date = new Date(now.getTime() - (i * 24 * 60 * 60 * 1000));
+        const dateStr = date.toDateString();
+        dailyActivity[dateStr] = 0;
+    }
+
+    recentTasks.forEach(r => {
+        const dateStr = new Date(r.datetime).toDateString();
+        if (dailyActivity[dateStr] !== undefined) {
+            dailyActivity[dateStr]++;
+        }
+    });
+
+    const daysWithTasks = Object.values(dailyActivity).filter(count => count > 0).length;
+    if (daysWithTasks === days) {
+        indicators.push('You haven\'t taken a break in ' + days + ' days');
+        burnoutScore += 25;
+    }
+
+    // Check for late completions
+    const lateTasks = completed.filter(r => {
+        const due = new Date(r.datetime);
+        const completedDate = new Date(r.completedDate);
+        return completedDate > due;
+    }).length;
+
+    if (lateTasks > completed.length * 0.6) {
+        indicators.push('Most of your tasks are completed late');
+        burnoutScore += 20;
+    }
+
+    // Display burnout alert if score is high
+    const burnoutAlert = document.getElementById('burnoutAlert');
+    const burnoutMessage = document.getElementById('burnoutMessage');
+
+    if (burnoutScore >= 50 && burnoutAlert && burnoutMessage) {
+        burnoutAlert.style.display = 'block';
+        burnoutMessage.innerHTML = `
+            <p><strong>Burnout risk detected (Score: ${burnoutScore}/100)</strong></p>
+            <ul>
+                ${indicators.map(ind => `<li>${ind}</li>`).join('')}
+            </ul>
+        `;
+    } else if (burnoutAlert) {
+        burnoutAlert.style.display = 'none';
+    }
+
+    return {
+        score: burnoutScore,
+        indicators: indicators
+    };
+}
+
+function showBurnoutSuggestions() {
+    const suggestions = [
+        '🌴 Take a day off to rest and recharge',
+        '📊 Review your task list and remove non-essential items',
+        '🎯 Focus on completing fewer tasks with higher quality',
+        '⏰ Set realistic deadlines and avoid over-committing',
+        '🧘 Practice mindfulness or meditation',
+        '💬 Talk to someone about your workload',
+        '📅 Schedule regular breaks throughout your day',
+        '🚶 Take walks and get physical exercise',
+        '😴 Ensure you\'re getting enough sleep',
+        '🎨 Engage in hobbies outside of work/tasks'
+    ];
+
+    alert('Burnout Prevention Suggestions:\n\n' + suggestions.join('\n'));
+}
+
+// Update the main refreshAnalytics function to include Phase 2 features
+function refreshAnalyticsPhase2() {
+    // Call existing refreshAnalytics
+    refreshAnalytics();
+
+    // Add Phase 2 analytics
+    const focusScore = calculateFocusScore();
+    const onTimeRate = calculateOnTimeRate();
+
+    // Update displays
+    document.getElementById('focusScore').textContent = focusScore;
+    document.getElementById('onTimeRate').textContent = onTimeRate + '%';
+
+    // Generate heatmap
+    createProductivityHeatmap();
+
+    // Display comparisons
+    displayPeriodComparison();
+
+    // Check for burnout
+    detectBurnout();
+
+    logAudit('Phase 2 analytics refreshed', 'system');
+}
+
+// Export Analytics Report (Phase 2)
+function exportAnalytics() {
+    const days = parseInt(document.getElementById('analyticsRange').value);
+    const now = new Date();
+    const startDate = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+
+    const completed = reminders.filter(r => {
+        if (!r.completed || !r.completedDate) return false;
+        const completedDate = new Date(r.completedDate);
+        return completedDate >= startDate && completedDate <= now;
+    });
+
+    const allInRange = reminders.filter(r => {
+        const reminderDate = new Date(r.datetime);
+        return reminderDate >= startDate && reminderDate <= now;
+    });
+
+    const focusScore = calculateFocusScore();
+    const onTimeRate = calculateOnTimeRate();
+    const comparison = generatePeriodComparison();
+    const burnout = detectBurnout();
+
+    // Generate report
+    let report = `PRODUCTIVITY ANALYTICS REPORT\n`;
+    report += `Generated: ${new Date().toLocaleString()}\n`;
+    report += `Period: Last ${days} days\n\n`;
+
+    report += `=== SUMMARY ===\n`;
+    report += `Total Tasks Scheduled: ${allInRange.length}\n`;
+    report += `Total Tasks Completed: ${completed.length}\n`;
+    report += `Completion Rate: ${allInRange.length > 0 ? Math.round((completed.length / allInRange.length) * 100) : 0}%\n`;
+    report += `Average Per Day: ${(completed.length / days).toFixed(1)}\n`;
+    report += `Focus Score: ${focusScore}/100\n`;
+    report += `On-Time Completion Rate: ${onTimeRate}%\n\n`;
+
+    report += `=== PERIOD COMPARISON ===\n`;
+    report += `This Week: ${comparison.week.thisWeek} tasks\n`;
+    report += `Last Week: ${comparison.week.lastWeek} tasks\n`;
+    report += `Weekly Change: ${comparison.week.diff >= 0 ? '+' : ''}${comparison.week.diff} (${comparison.week.percent}%)\n\n`;
+    report += `This Month: ${comparison.month.thisMonth} tasks\n`;
+    report += `Last Month: ${comparison.month.lastMonth} tasks\n`;
+    report += `Monthly Change: ${comparison.month.diff >= 0 ? '+' : ''}${comparison.month.diff} (${comparison.month.percent}%)\n\n`;
+
+    report += `=== BURNOUT ASSESSMENT ===\n`;
+    report += `Burnout Risk Score: ${burnout.score}/100\n`;
+    if (burnout.indicators.length > 0) {
+        report += `Indicators:\n`;
+        burnout.indicators.forEach(ind => {
+            report += `- ${ind}\n`;
+        });
+    } else {
+        report += `No burnout indicators detected. Keep up the good work!\n`;
+    }
+    report += `\n`;
+
+    report += `=== TASK BREAKDOWN BY MODE ===\n`;
+    const modeCounts = { work: 0, adhd: 0, memory: 0 };
+    completed.forEach(r => {
+        if (r.mode && modeCounts.hasOwnProperty(r.mode)) {
+            modeCounts[r.mode]++;
+        }
+    });
+    report += `Work Mode: ${modeCounts.work}\n`;
+    report += `ADHD Mode: ${modeCounts.adhd}\n`;
+    report += `Memory/Caregiver Mode: ${modeCounts.memory}\n\n`;
+
+    report += `=== RECOMMENDATIONS ===\n`;
+    if (focusScore < 50) {
+        report += `- Your focus score is low. Consider reducing distractions and breaking tasks into smaller pieces.\n`;
+    }
+    if (onTimeRate < 60) {
+        report += `- Many tasks are completed late. Try setting more realistic deadlines or using reminders earlier.\n`;
+    }
+    if (burnout.score >= 50) {
+        report += `- High burnout risk detected. Please take breaks and reduce your task load.\n`;
+    }
+    if (focusScore >= 80 && onTimeRate >= 80) {
+        report += `- Excellent productivity! You're maintaining high focus and completing tasks on time.\n`;
+    }
+
+    // Download report
+    const blob = new Blob([report], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `productivity_report_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+
+    logAudit('Analytics report exported', 'user');
+}
+
+// Make functions globally accessible
+window.refreshAnalyticsPhase2 = refreshAnalyticsPhase2;
+window.exportAnalytics = exportAnalytics;
+window.showBurnoutSuggestions = showBurnoutSuggestions;
 
 function generateInsights(completed, dayCount, dayNames, days) {
     const insightsContainer = document.getElementById('analyticsInsights');
@@ -2137,4 +3713,4 @@ setInterval(() => {
 
 console.log('=== REMINDER APP v1.0 LOADED ===');
 console.log('📱 All 12 weeks of features implemented');
-console.log('✅ Core reminders, Modes, Customization, Onboarding, Security, Testing');
+console.log('✅ Core reminders, Modes, Customization, Onboarding, Security, Testing');}
