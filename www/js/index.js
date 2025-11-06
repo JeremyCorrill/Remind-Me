@@ -22,6 +22,9 @@ let voiceRecognition = null;
 let isRecordingVoice = false;
 let userProductivityPatterns = null;
 let estimationData = [];
+let authManager;
+let reminderSync;
+let caregiverAccess;
 
 
 // Settings
@@ -35,6 +38,79 @@ let appSettings = {
     biometricEnabled: false,
     auditLogEnabled: false
 };
+
+document.addEventListener('deviceready', onDeviceReady, false);
+
+function setupAuthEventListeners() {
+    // Sign-in button
+    const signInBtn = document.getElementById('googleSignInBtn');
+    if (signInBtn) {
+        signInBtn.addEventListener('click', async () => {
+            try {
+                await authManager.signInWithGoogle();
+                await onUserSignedIn();
+            } catch (error) {
+                console.error('Sign-in error:', error);
+            }
+        });
+    }
+
+    // Sign-out button
+    const signOutBtn = document.getElementById('signOutBtn');
+    if (signOutBtn) {
+        signOutBtn.addEventListener('click', async () => {
+            if (confirm('Are you sure you want to sign out?')) {
+                await authManager.signOut();
+                if (reminderSync) {
+                    reminderSync.stopListening();
+                }
+            }
+        });
+    }
+}
+
+// NOW place onUserSignedIn OUTSIDE and AFTER setupAuthEventListeners
+async function onUserSignedIn() {
+    console.log('=== USER SIGNED IN - Post-Auth Setup ===');
+
+    try {
+        // Initialize cloud sync
+        console.log('Initializing cloud sync...');
+        reminderSync = new ReminderSync(authManager);
+        reminderSync.initialize();
+
+        // Initialize caregiver access
+        console.log('Initializing caregiver access...');
+        caregiverAccess = new CaregiverAccess(authManager);
+        caregiverAccess.initialize();
+
+        // Sync local reminders to cloud
+        console.log('Syncing to cloud...');
+        const result = await reminderSync.syncAllToCloud();
+        console.log('Sync complete:', result);
+
+        // NOW check for PIN lock
+        if (appSettings.pinEnabled && currentPin) {
+            console.log('PIN enabled - showing lock screen');
+            showPinLock();
+            return;
+        }
+
+        // Check onboarding status
+        onboardingComplete = localStorage.getItem('onboardingComplete') === 'true';
+
+        if (!onboardingComplete) {
+            console.log('Onboarding needed - showing onboarding');
+            showOnboarding();
+        } else {
+            console.log('Onboarding complete - mode selection already visible');
+            // Don't call anything - showMainApp() already called by auth.js
+        }
+
+    } catch (error) {
+        console.error('Post-signin setup error:', error);
+    }
+}
 
 // ============= BROWSER TEST MODE =============
 if (typeof cordova === 'undefined') {
@@ -58,31 +134,43 @@ if (typeof cordova === 'undefined') {
     }, 100);
 }
 
-// ============= INITIALIZATION =============
-document.addEventListener('deviceready', onDeviceReady, false);
+async function onDeviceReady() {
+    console.log('=== DEVICE READY - Starting Initialization ===');
 
-function onDeviceReady() {
-    console.log('🚀 DEVICE READY!');
+    try {
+        // 1. Initialize AuthManager
+        console.log('Step 1: Initializing AuthManager...');
+        authManager = window.authManager;
+        await authManager.initialize();
+        console.log('✓ AuthManager initialized');
 
-    // Load settings
-    loadSettings();
-    loadAuditLog();
+        // 2. Setup auth event listeners (sign in/out buttons)
+        console.log('Step 2: Setting up auth listeners...');
+        setupAuthEventListeners();
+        console.log('✓ Auth listeners ready');
 
-    // Apply saved theme and font size
-    applyTheme(appSettings.theme);
-    applyFontSize(appSettings.fontSize);
+        // 3. Load settings (but don't initialize app yet)
+        console.log('Step 3: Loading settings...');
+        loadSettings();
+        loadAuditLog();
+        applyTheme(appSettings.theme);
+        applyFontSize(appSettings.fontSize);
+        console.log('✓ Settings loaded');
 
-    // Initialize app first (attach event listeners)
-    initializeApp();
+        // 4. Setup general event listeners (mode cards, tabs, etc.)
+        console.log('Step 4: Setting up app listeners...');
+        setupEventListeners();
+        console.log('✓ App listeners ready');
 
-    // Check for PIN lock
-    if (appSettings.pinEnabled && currentPin) {
-        showPinLock();
-        return;
+        // 5. Auth manager will handle showing correct view via checkAuthState
+        // Don't call any view-showing functions here!
+        console.log('=== Initialization Complete - Waiting for auth state ===');
+
+    } catch (error) {
+        console.error('❌ Initialization error:', error);
+        alert('Failed to initialize app. Please restart.');
     }
-
-    // Then check if onboarding needed (this will show appropriate view)
-    checkOnboarding();
+    document.body.classList.add('initialized');
 }
 
 function initializeApp() {
@@ -1320,6 +1408,10 @@ function checkOnboarding() {
 
     if (!onboardingComplete) {
         showOnboarding();
+    } else {
+        // If onboarding is complete, just show the mode selection
+        // (which should already be visible from showMainApp)
+        console.log('Onboarding already complete');
     }
 }
 
@@ -1506,14 +1598,32 @@ function changePin() {
 let enteredPin = '';
 
 function showPinLock() {
+    console.log('=== SHOWING PIN LOCK ===');
     const pinLockView = document.getElementById('pinLockView');
     const homepage = document.getElementById('homepageView');
     const mainApp = document.getElementById('mainAppView');
+    const signInScreen = document.getElementById('signInScreen');
+    const onboardingView = document.getElementById('onboardingView');
 
+    // Hide everything
+    if (homepage) {
+        homepage.style.display = 'none';
+        homepage.classList.remove('active');
+    }
+    if (mainApp) {
+        mainApp.style.display = 'none';
+        mainApp.classList.remove('active');
+    }
+    if (signInScreen) {
+        signInScreen.style.display = 'none';
+    }
+    if (onboardingView) {
+        onboardingView.style.display = 'none';
+        onboardingView.classList.remove('active');
+    }
+
+    // Show PIN lock
     if (pinLockView) {
-        if (homepage) homepage.style.display = 'none';
-        if (mainApp) mainApp.style.display = 'none';
-
         pinLockView.classList.add('active');
         pinLockView.style.display = 'block';
         enteredPin = '';
@@ -1568,13 +1678,26 @@ function checkPin() {
 }
 
 function unlockApp() {
+    console.log('=== UNLOCKING APP ===');
     const pinLockView = document.getElementById('pinLockView');
     if (pinLockView) {
         pinLockView.classList.remove('active');
         pinLockView.style.display = 'none';
     }
 
-    initializeApp();
+    // Check onboarding
+    onboardingComplete = localStorage.getItem('onboardingComplete') === 'true';
+
+    if (!onboardingComplete) {
+        showOnboarding();
+    } else {
+        // Show mode selection (should have been set by showMainApp earlier)
+        const homepage = document.getElementById('homepageView');
+        if (homepage) {
+            homepage.style.display = 'flex';
+            homepage.classList.add('active');
+        }
+    }
 }
 
 function useBiometric() {
@@ -1732,14 +1855,13 @@ function saveSettings() {
 
 // ============= REMINDER MANAGEMENT =============
 
-function scheduleReminder() {
+async function scheduleReminder() {  // ← Add async here
     const title = document.getElementById('title').value.trim();
     const text = document.getElementById('text').value.trim();
     const datetimeStr = document.getElementById('datetime').value;
-    const repeatMinutes = parseInt(document.getElementById('repeatInterval').value);
 
     if (!title || !text || !datetimeStr) {
-        alert('Please fill in all required fields (Title, Description, and Date/Time).');
+        alert('Please fill in all required fields');
         return;
     }
 
@@ -1779,6 +1901,38 @@ function scheduleReminder() {
     // PHASE 1: Get location data
     const location = getLocationData();
 
+    const repeatMinutes = parseInt(document.getElementById('repeatInterval').value) || 0;
+
+    // Save reminder
+    const reminder = {
+        id: id,
+        title: title,
+        text: text,
+        datetime: datetime.toISOString(),
+        repeatMinutes: repeatMinutes,
+        mode: currentMode,
+        priority: priority,
+        project: project,
+        completed: false,
+        completedDate: null,
+        comments: [],
+        subtasks: subtasks,
+        recurring: recurring,
+        location: location
+    };
+
+    // Get all reminders from storage (not just current mode)
+    const allReminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+
+    // Add new reminder
+    allReminders.push(reminder);
+
+    // Save all reminders
+    localStorage.setItem('reminders', JSON.stringify(allReminders));
+
+    // Add to current mode's reminders array in memory
+    reminders.push(reminder);
+
     // Schedule the notification
     cordova.plugins.notification.local.schedule({
         id: id,
@@ -1791,26 +1945,16 @@ function scheduleReminder() {
         foreground: true
     });
 
-    // Save reminder
-    const reminder = {
-        id: id,
-        title: title,
-        text: text,
-        datetime: datetime.toISOString(),
-        repeatMinutes: repeatMinutes || 0,
-        mode: currentMode,
-        priority: priority,
-        project: project,
-        completed: false,
-        completedDate: null,
-        comments: [],
-        subtasks: subtasks, // PHASE 1
-        recurring: recurring, // PHASE 1
-        location: location // PHASE 1
-    };
-
-    reminders.push(reminder);
-    localStorage.setItem('reminders', JSON.stringify(reminders));
+    // 🆕 NEW: Sync to cloud if user is signed in
+    if (reminderSync && reminderSync.isSyncEnabled()) {
+        try {
+            await reminderSync.saveReminder(reminder);
+            console.log('Reminder synced to cloud');
+        } catch (error) {
+            console.error('Cloud sync failed:', error);
+            // Continue - already saved locally
+        }
+    }
 
     // PHASE 1: Schedule recurring if applicable
     if (recurring) {
@@ -1954,7 +2098,9 @@ function openCommentModal(reminderId) {
     }
 
     document.getElementById('newCommentText').value = '';
-    document.getElementById('commentModal').classList.add('active');
+    const commentModal = document.getElementById('commentModal');
+    commentModal.style.display = 'flex';
+    commentModal.classList.add('active');
 
     logAudit('Opened comments for: ' + reminder.title, 'user');
 }
@@ -1989,10 +2135,114 @@ function saveComment() {
 }
 
 function cancelComment() {
-    document.getElementById('commentModal').classList.remove('active');
+    const modal = document.getElementById('commentModal');
+    modal.style.display = 'none';
+    modal.classList.remove('active');
     currentCommentReminderId = null;
 }
 
+// ============= EDIT MODAL FUNCTIONS =============
+let editingReminder = null;
+
+function openEditModal(reminder) {
+    console.log('📝 Opening edit modal for:', reminder.title);
+    editingReminder = reminder;
+
+    // Populate form fields
+    document.getElementById('editTitle').value = reminder.title;
+    document.getElementById('editText').value = reminder.text;
+
+    // Format datetime for input
+    const dt = new Date(reminder.datetime);
+    const formatted = dt.toISOString().slice(0, 16);
+    document.getElementById('editDatetime').value = formatted;
+
+    document.getElementById('editRepeatInterval').value = reminder.repeatMinutes || '';
+
+    // Show priority section if in work/adhd mode
+    const prioritySection = document.getElementById('editPrioritySection');
+    if (currentMode === 'work' || currentMode === 'adhd') {
+        prioritySection.style.display = 'block';
+        document.getElementById('editPriority').value = reminder.priority || 'medium';
+    } else {
+        prioritySection.style.display = 'none';
+    }
+
+    // Show modal
+    const modal = document.getElementById('editModal');
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    logAudit('Opened edit modal for: ' + reminder.title, 'user');
+}
+
+function saveEdit() {
+    console.log('💾 Saving edit');
+    if (!editingReminder) {
+        console.error('No reminder being edited');
+        return;
+    }
+
+    const title = document.getElementById('editTitle').value.trim();
+    const text = document.getElementById('editText').value.trim();
+    const datetimeStr = document.getElementById('editDatetime').value;
+    const repeatMinutes = parseInt(document.getElementById('editRepeatInterval').value) || 0;
+
+    if (!title || !text || !datetimeStr) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    const datetime = new Date(datetimeStr);
+    if (isNaN(datetime.getTime())) {
+        alert('Invalid date/time');
+        return;
+    }
+
+    // Update reminder
+    editingReminder.title = title;
+    editingReminder.text = text;
+    editingReminder.datetime = datetime.toISOString();
+    editingReminder.repeatMinutes = repeatMinutes;
+
+    if (currentMode === 'work' || currentMode === 'adhd') {
+        editingReminder.priority = document.getElementById('editPriority').value;
+    }
+
+    // Save to localStorage
+    localStorage.setItem('reminders', JSON.stringify(reminders));
+
+    // Re-schedule notification
+    cordova.plugins.notification.local.cancel(editingReminder.id);
+    cordova.plugins.notification.local.schedule({
+        id: editingReminder.id,
+        title: title,
+        text: text,
+        trigger: {
+            at: datetime,
+            every: repeatMinutes > 0 ? { minutes: repeatMinutes } : null
+        },
+        foreground: true
+    });
+
+    // Refresh display
+    addReminderToList(editingReminder);
+
+    // Close modal
+    cancelEdit();
+
+    console.log('✅ Reminder updated');
+    logAudit('Edited reminder: ' + title, 'user');
+}
+
+function cancelEdit() {
+    const modal = document.getElementById('editModal');
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+    editingReminder = null;
+}
+
+// =============  COMPLETE REMINDER =============
 function completeReminder(reminder) {
     cordova.plugins.notification.local.cancel(reminder.id);
 
@@ -2197,10 +2447,17 @@ function deleteReminder(id) {
 }
 
 function loadReminders() {
-    reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+    console.log('📂 Loading reminders for mode:', currentMode);
+
+    // Load all reminders from storage
+    const allReminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+
+    // SECURITY: Filter to only current mode (protects PHI in memory mode)
+    reminders = allReminders.filter(r => r.mode === currentMode);
+
     completedHistory = JSON.parse(localStorage.getItem('completedHistory') || '[]');
 
-    // Display active reminders
+    // Display active reminders for current mode only
     const reminderListEl = document.getElementById('reminderList');
     if (reminderListEl) {
         reminderListEl.innerHTML = '';
@@ -2213,12 +2470,7 @@ function loadReminders() {
     // Update counts
     updateReminderCount();
 
-    // ADDED: Apply mode filters
-    if (document.getElementById('filterWork')) {
-        applyModeFilters();
-    }
-
-    console.log('✅ Loaded', reminders.length, 'reminders');
+    console.log(`✅ Loaded ${reminders.length} reminders for ${currentMode} mode (${allReminders.length} total)`);
 }
 
 // ============= MODE FILTERING =============
@@ -3667,6 +3919,7 @@ if (filterMemory) {
 // ============= GLOBAL FUNCTIONS =============
 
 // Make functions globally accessible
+window.onUserSignedIn = onUserSignedIn;
 window.selectMode = selectMode;
 window.showSettings = showSettings;
 window.closeSettings = closeSettings;

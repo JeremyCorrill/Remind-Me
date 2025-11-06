@@ -2,15 +2,32 @@
 <widget id="com.yourname.reminderapp" version="1.0.5" android-versionCode="10005"
     xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>Remind Me</name>
-    <description>Sample Apache Cordova App</description>
-    <author email="dev@cordova.apache.org" href="https://cordova.apache.org">
-        Apache Cordova Team
+    <description>Personal task and reminder management app</description>
+    <author email="your@email.com" href="https://yourwebsite.com">
+        Your Name
     </author>
+
     <content src="index.html" />
+
+    <!-- Network Access -->
+    <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
+
+    <!-- Android Settings -->
     <preference name="android-minSdkVersion" value="24" />
     <preference name="android-compileSdkVersion" value="35" />
+    <preference name="android-targetSdkVersion" value="35" />
     <preference name="AndroidXEnabled" value="true" />
     <preference name="GradlePluginKotlinEnabled" value="true" />
+
+    <!-- Platform-specific configurations -->
+    <platform name="android">
+        <allow-intent href="market:*" />
+    </platform>
+
 </widget>

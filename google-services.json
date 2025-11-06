@@ -1,0 +1,34 @@
+{
+  "project_info": {
+    "project_number": "1031307273535",
+    "project_id": "remind-me-b5425",
+    "storage_bucket": "remind-me-b5425.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1031307273535:android:30bdb1f30a9e8d72135f8a",
+        "android_client_info": {
+          "package_name": "com.yourname.reminderapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1031307273535-xxxxxxxx.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBKjz4fMWktqEK_1QM8HUGPDdAbn1t0KBA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

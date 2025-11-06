@@ -1,0 +1,539 @@
+/* ============================================
+   SIGN-IN SCREEN STYLES
+   ============================================ */
+
+#signInScreen {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px;
+}
+
+.signin-container {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+}
+
+.signin-header {
+    margin-bottom: 30px;
+}
+
+.signin-header h1 {
+    color: #333;
+    margin-bottom: 10px;
+    font-size: 28px;
+}
+
+.signin-header p {
+    color: #666;
+    font-size: 14px;
+}
+
+.google-signin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 12px 24px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.google-signin-btn:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+    background: #f8f8f8;
+}
+
+.google-signin-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.privacy-notice {
+    margin-top: 20px;
+    font-size: 12px;
+    color: #999;
+    line-height: 1.4;
+}
+
+/* ============================================
+   USER PROFILE STYLES
+   ============================================ */
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.user-photo {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid #4CAF50;
+    object-fit: cover;
+}
+
+.btn-secondary {
+    padding: 8px 16px;
+    background: #9e9e9e;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background: #757575;
+}
+
+/* ============================================
+   LOADING OVERLAY
+   ============================================ */
+
+#loadingOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    color: white;
+}
+
+.loading-spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4CAF50;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loadingMessage {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* ============================================
+   CAREGIVER SECTION STYLES
+   ============================================ */
+
+#caregiverSection {
+    background: #f9f9f9;
+    padding: 20px;
+    border-radius: 8px;
+    margin-top: 30px;
+}
+
+#caregiverSection h2 {
+    color: #333;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#caregiverSection h3 {
+    color: #555;
+    margin-bottom: 15px;
+    font-size: 18px;
+}
+
+/* Grant Access Form */
+.caregiver-grant-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.caregiver-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.caregiver-controls input[type="email"] {
+    flex: 2;
+    min-width: 200px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.caregiver-controls select {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 14px;
+    background: white;
+}
+
+.btn-primary {
+    padding: 10px 20px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.3s ease;
+}
+
+.btn-primary:hover {
+    background: #45a049;
+}
+
+.btn-primary:active {
+    background: #3d8b40;
+}
+
+/* Caregivers List */
+.caregivers-list-section,
+.patients-list-section {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.caregiver-list,
+.patient-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.caregiver-list li,
+.patient-list li {
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+}
+
+.caregiver-item,
+.patient-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    background: #f8f8f8;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    border: 1px solid #e0e0e0;
+    transition: background 0.2s ease;
+}
+
+.caregiver-item:hover,
+.patient-item:hover {
+    background: #f0f0f0;
+}
+
+.caregiver-info,
+.patient-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.caregiver-name,
+.patient-name {
+    font-weight: 600;
+    color: #333;
+    font-size: 15px;
+}
+
+.caregiver-email,
+.patient-email {
+    color: #666;
+    font-size: 13px;
+}
+
+.access-level {
+    background: #4CAF50;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-right: 10px;
+    white-space: nowrap;
+}
+
+.access-level.view {
+    background: #2196F3;
+}
+
+.access-level.edit {
+    background: #FF9800;
+}
+
+.access-level.full {
+    background: #4CAF50;
+}
+
+.caregiver-actions,
+.patient-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-revoke {
+    padding: 8px 16px;
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.3s ease;
+}
+
+.btn-revoke:hover {
+    background: #d32f2f;
+}
+
+.btn-view {
+    padding: 8px 16px;
+    background: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.3s ease;
+}
+
+.btn-view:hover {
+    background: #1976D2;
+}
+
+.empty-state {
+    color: #999;
+    font-style: italic;
+    padding: 20px;
+    text-align: center;
+    background: #f8f8f8;
+    border-radius: 5px;
+    border: 1px dashed #ddd;
+}
+
+/* ============================================
+   PATIENT REMINDERS MODAL
+   ============================================ */
+
+.patient-reminders-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.patient-reminders-content {
+    background: white;
+    border-radius: 10px;
+    padding: 30px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.patient-reminders-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.patient-reminders-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    line-height: 1;
+}
+
+.close-modal:hover {
+    color: #333;
+}
+
+.patient-reminder-item {
+    padding: 15px;
+    background: #f8f8f8;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    border-left: 4px solid #4CAF50;
+}
+
+.patient-reminder-item.completed {
+    border-left-color: #9e9e9e;
+    opacity: 0.7;
+}
+
+.patient-reminder-item.overdue {
+    border-left-color: #f44336;
+}
+
+.reminder-title {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.reminder-text {
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.reminder-datetime {
+    color: #999;
+    font-size: 13px;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 768px) {
+    .signin-container {
+        padding: 30px 20px;
+    }
+
+    .caregiver-controls {
+        flex-direction: column;
+    }
+
+    .caregiver-controls input[type="email"],
+    .caregiver-controls select,
+    .btn-primary {
+        width: 100%;
+        min-width: auto;
+    }
+
+    .caregiver-item,
+    .patient-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .caregiver-actions,
+    .patient-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .access-level {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+
+    .user-profile {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    #caregiverSection {
+        padding: 15px;
+    }
+
+    .caregiver-grant-section,
+    .caregivers-list-section,
+    .patients-list-section {
+        padding: 15px;
+    }
+
+    .patient-reminders-content {
+        padding: 20px;
+    }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+    #signInScreen,
+    #loadingOverlay,
+    .google-signin-btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-revoke,
+    .btn-view {
+        display: none !important;
+    }
+
+    .user-profile {
+        border: 1px solid #ddd;
+    }
+}
+body:not(.initialized) #homepageView,
+body:not(.initialized) #mainAppView,
+body:not(.initialized) #onboardingView,
+body:not(.initialized) #pinLockView {
+    display: none !important;
+}

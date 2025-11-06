@@ -9,8 +9,27 @@
 </head>
 
 <body>
+
+<!-- Sign-In Screen -->
+<div id="signInScreen" style="display: flex;">
+    <div class="signin-container">
+        <div class="signin-header">
+            <h1>Reminder App</h1>
+            <p>Your personal task and reminder assistant</p>
+        </div>
+
+        <button id="googleSignInBtn" class="google-signin-btn">
+            Sign in with Google
+        </button>
+
+        <p class="privacy-notice">
+            By signing in, you agree to our Terms of Service and Privacy Policy
+        </p>
+    </div>
+</div>
+
 <!-- ONBOARDING VIEW (Week 9) -->
-<div id="onboardingView" class="view">
+<div id="onboardingView" class="view" style="display: none;">
     <div class="onboarding-container">
         <div class="onboarding-progress">
             <div class="progress-bar">
@@ -31,7 +50,7 @@
 </div>
 
 <!-- HOMEPAGE VIEW - Mode Selection -->
-<div id="homepageView" class="view active">
+<div id="homepageView" class="view active" style="display: none;">
     <h1>Welcome to Reminder App</h1>
     <p class="subtitle">Choose your mode to get started</p>
 
@@ -75,7 +94,7 @@
 </div>
 
 <!-- PIN LOCK SCREEN (Week 10) -->
-<div id="pinLockView" class="view">
+<div id="pinLockView" class="view" style="display: none;">
     <div class="pin-container">
         <div class="lock-icon">🔒</div>
         <h2>Enter PIN</h2>
@@ -108,7 +127,7 @@
 </div>
 
 <!-- MAIN APP VIEW -->
-<div id="mainAppView" class="view">
+<div id="mainAppView" class="view" style="display: none;">
     <!-- Navigation Tabs -->
     <div class="nav-tabs">
         <button class="nav-tab active" data-tab="reminders">📋 Reminders</button>
@@ -604,28 +623,28 @@
                 </select>
             </div>
 
-            <!-- COMMENT MODAL -->
-            <div id="commentModal" class="modal">
-                <div class="modal-content">
-                    <h3>💬 Comments</h3>
-
-                    <div id="existingComments" class="existing-comments">
-                        <!-- Populated by JavaScript -->
-                    </div>
-
-                    <label for="newCommentText">Add Comment:</label>
-                    <textarea id="newCommentText" rows="3" placeholder="Enter your comment..."></textarea>
-
-                    <div class="modal-buttons">
-                        <button onclick="cancelComment()" class="btn-secondary">Cancel</button>
-                        <button onclick="saveComment()" class="btn-primary">Add Comment</button>
-                    </div>
-                </div>
-            </div>
-
             <div class="modal-buttons">
                 <button id="cancelEditBtn" onclick="cancelEdit()" class="btn-secondary">Cancel</button>
                 <button id="saveEditBtn" onclick="saveEdit()" class="btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMMENT MODAL -->
+    <div id="commentModal" class="modal">
+        <div class="modal-content">
+            <h3>💬 Comments</h3>
+
+            <div id="existingComments" class="existing-comments">
+                <!-- Populated by JavaScript -->
+            </div>
+
+            <label for="newCommentText">Add Comment:</label>
+            <textarea id="newCommentText" rows="3" placeholder="Enter your comment..."></textarea>
+
+            <div class="modal-buttons">
+                <button onclick="cancelComment()" class="btn-secondary">Cancel</button>
+                <button onclick="saveComment()" class="btn-primary">Add Comment</button>
             </div>
         </div>
     </div>
@@ -724,8 +743,37 @@
         </div>
     </div>
 
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p id="loadingMessage">Loading...</p>
+    </div>
+
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD19vqoDjqy7HutPi3VcizGfRbw_-hsxy0",
+            authDomain: "remind-me-b5425.firebaseapp.com",
+            projectId: "remind-me-b5425",
+            storageBucket: "remind-me-b5425.firebasestorage.app",
+            messagingSenderId: "1031307273535",
+            appId: "1:1031307273535:web:b2c0e85ff152da38135f8a"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+    </script>
+
     <!-- Cordova Scripts -->
     <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="js/auth.js"></script>
+    <script type="text/javascript" src="js/reminderSync.js"></script>
+    <script type="text/javascript" src="js/caregiverAccess.js"></script>
     <script type="text/javascript" src="js/index.js"></script>
     <script type="text/javascript" src="js/work.js"></script>
     <script type="text/javascript" src="js/adhd.js"></script>
