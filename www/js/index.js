@@ -39,7 +39,37 @@ let appSettings = {
     auditLogEnabled: false
 };
 
+// ============= BROWSER TEST MODE CHECK (MUST BE EARLY) =============
+const IS_BROWSER = typeof cordova === 'undefined';
+console.log('🔍 Environment check:', IS_BROWSER ? '🌐 BROWSER' : '📱 CORDOVA');
+
+// If in browser, set up mock Cordova immediately
+if (IS_BROWSER) {
+    console.warn('⚠️ BROWSER TEST MODE - Setting up mocks');
+    window.cordova = {
+        plugins: {
+            notification: {
+                local: {
+                    requestPermission: function(cb) { cb(true); },
+                    promptPermission: function() {},
+                    schedule: function(o) { console.log('Mock notification:', o.title); },
+                    cancel: function(id) { console.log('Mock cancel:', id); },
+                    on: function() {}
+                }
+            }
+        }
+    };
+}
+
 document.addEventListener('deviceready', onDeviceReady, false);
+
+// If browser, trigger deviceready immediately
+if (IS_BROWSER) {
+    setTimeout(() => {
+        console.log('🧪 Triggering mock deviceready event');
+        document.dispatchEvent(new Event('deviceready'));
+    }, 100);
+}
 
 function setupAuthEventListeners() {
     // Sign-in button
@@ -112,66 +142,163 @@ async function onUserSignedIn() {
     }
 }
 
-// ============= BROWSER TEST MODE =============
-if (typeof cordova === 'undefined') {
-    console.warn('⚠️ BROWSER TEST MODE');
-    window.cordova = {
-        plugins: {
-            notification: {
-                local: {
-                    requestPermission: function(cb) { cb(true); },
-                    promptPermission: function() {},
-                    schedule: function(o) { console.log('Mock notification:', o.title); },
-                    cancel: function(id) { console.log('Mock cancel:', id); },
-                    on: function() {}
-                }
-            }
-        }
-    };
-
-    setTimeout(() => {
-        document.dispatchEvent(new Event('deviceready'));
-    }, 100);
-}
-
 async function onDeviceReady() {
     console.log('=== DEVICE READY - Starting Initialization ===');
 
     try {
+        // Special browser mode handling
+        if (IS_BROWSER) {
+            console.log('🧪 BROWSER MODE: Skipping authentication');
+
+            // Load settings
+            console.log('Step 1: Loading settings...');
+            loadSettings();
+            loadAuditLog();
+            applyTheme(appSettings.theme);
+            applyFontSize(appSettings.fontSize);
+
+            // Setup event listeners
+            console.log('Step 2: Setting up app listeners...');
+            setupEventListeners();
+
+            // Make functions globally accessible
+            window.showSettings = showSettings;
+            window.closeSettings = closeSettings;
+            window.saveSettings = saveSettings;
+            window.saveAndCloseSettings = saveAndCloseSettings;
+            window.showTab = showTab;
+            window.scheduleReminder = scheduleReminder;
+
+            console.log('✅ Browser initialization complete');
+            document.body.classList.add('initialized');
+
+            // Check if onboarding is needed
+            onboardingComplete = localStorage.getItem('onboardingComplete') === 'true';
+            console.log('Onboarding status:', onboardingComplete ? 'completed' : 'needed');
+
+            // Show mode selection after short delay
+            setTimeout(() => {
+                if (!onboardingComplete) {
+                    console.log('🎓 Showing onboarding...');
+                    showOnboarding();
+                } else {
+                    console.log('🎯 Showing mode selection screen...');
+                    showMainApp();
+                    // Attach mode card listeners
+                    attachModeCardListeners();
+                }
+            }, 500);
+
+            return;
+        }
+
         // 1. Initialize AuthManager
         console.log('Step 1: Initializing AuthManager...');
         authManager = window.authManager;
         await authManager.initialize();
-        console.log('✓ AuthManager initialized');
+        console.log('âœ" AuthManager initialized');
 
-        // 2. Setup auth event listeners (sign in/out buttons)
+        // 2. Setup auth event listeners
         console.log('Step 2: Setting up auth listeners...');
         setupAuthEventListeners();
-        console.log('✓ Auth listeners ready');
+        console.log('âœ" Auth listeners ready');
 
-        // 3. Load settings (but don't initialize app yet)
+        // 3. Load settings EARLY
         console.log('Step 3: Loading settings...');
         loadSettings();
         loadAuditLog();
         applyTheme(appSettings.theme);
         applyFontSize(appSettings.fontSize);
-        console.log('✓ Settings loaded');
+        console.log('âœ" Settings loaded');
 
-        // 4. Setup general event listeners (mode cards, tabs, etc.)
+        // 4. Setup general event listeners
         console.log('Step 4: Setting up app listeners...');
         setupEventListeners();
-        console.log('✓ App listeners ready');
+        console.log('âœ" App listeners ready');
 
-        // 5. Auth manager will handle showing correct view via checkAuthState
-        // Don't call any view-showing functions here!
+        // 5. Make critical functions globally accessible
+        window.showSettings = showSettings;
+        window.showTab = showTab;
+        window.scheduleReminder = scheduleReminder;
+
         console.log('=== Initialization Complete - Waiting for auth state ===');
 
     } catch (error) {
-        console.error('❌ Initialization error:', error);
+        console.error('âŒ Initialization error:', error);
         alert('Failed to initialize app. Please restart.');
     }
     document.body.classList.add('initialized');
 }
+
+function showMainApp() {
+    console.log('🏠 showMainApp() - Showing mode selection');
+
+    const signInScreen = document.getElementById('signInScreen');
+    const homepageView = document.getElementById('homepageView');
+    const mainAppView = document.getElementById('mainAppView');
+    const onboardingView = document.getElementById('onboardingView');
+    const pinLockView = document.getElementById('pinLockView');
+
+    // Hide everything first
+    if (signInScreen) signInScreen.style.display = 'none';
+    if (mainAppView) mainAppView.style.display = 'none';
+    if (onboardingView) onboardingView.style.display = 'none';
+    if (pinLockView) pinLockView.style.display = 'none';
+
+    // Show homepage (mode selection)
+    if (homepageView) {
+        homepageView.style.display = 'flex';
+        homepageView.classList.add('active');
+    }
+
+    console.log('✅ Mode selection screen now visible');
+}
+
+function attachModeCardListeners() {
+    console.log('🔗 Attaching mode card listeners...');
+    const modeCards = document.querySelectorAll('.mode-card');
+
+    if (modeCards.length === 0) {
+        console.error('❌ No mode cards found!');
+        setTimeout(() => attachModeCardListeners(), 500); // Retry after delay
+        return;
+    }
+
+    console.log(`✓ Found ${modeCards.length} mode cards`);
+
+    modeCards.forEach(card => {
+        // Remove old listeners by cloning
+        const newCard = card.cloneNode(true);
+        card.parentNode.replaceChild(newCard, card);
+
+        // Add new click listener
+        newCard.addEventListener('click', function() {
+            const mode = this.getAttribute('data-mode');
+            console.log(`🎯 Mode card clicked: ${mode}`);
+
+            if (mode && typeof selectMode === 'function') {
+                selectMode(mode);
+            } else {
+                console.error('❌ Cannot select mode:', mode);
+            }
+        });
+
+        // Visual feedback
+        newCard.style.cursor = 'pointer';
+        newCard.style.transition = 'transform 0.2s';
+        newCard.addEventListener('mouseenter', function() {
+            this.style.transform = 'scale(1.05)';
+        });
+        newCard.addEventListener('mouseleave', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+
+    console.log('✅ Mode card listeners successfully attached');
+}
+
+// Make it globally accessible
+window.showMainApp = showMainApp;
 
 function initializeApp() {
     // Attach event listeners
@@ -734,16 +861,17 @@ function addSubtaskToList(text) {
 }
 
 function getSubtasks() {
-    const inputs = document.querySelectorAll('.subtask-input');
+    const subtaskInputs = document.querySelectorAll('.subtask-input');
     const subtasks = [];
 
-    inputs.forEach(input => {
+    subtaskInputs.forEach((input, index) => {
         const text = input.value.trim();
         if (text) {
             subtasks.push({
+                id: Date.now() + index,
                 text: text,
                 completed: false,
-                id: Date.now() + Math.random()
+                createdAt: new Date().toISOString()
             });
         }
     });
@@ -761,8 +889,90 @@ function updateSubtasksCount() {
 }
 
 function clearSubtasks() {
-    document.getElementById('subtasksList').innerHTML = '';
-    document.getElementById('subtasksSection').style.display = 'none';
+    const subtaskContainer = document.getElementById('subtaskContainer');
+    if (subtaskContainer) {
+        subtaskContainer.innerHTML = '';
+    }
+}
+
+function displaySubtasks(reminder, container) {
+    if (!reminder.subtasks || reminder.subtasks.length === 0) {
+        return;
+    }
+
+    const subtaskSection = document.createElement('div');
+    subtaskSection.className = 'subtask-section';
+    subtaskSection.style.cssText = `
+        margin-top: 10px;
+        padding: 10px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 3px solid #007bff;
+    `;
+
+    subtaskSection.innerHTML = `
+        <strong style="font-size: 14px;">âœ… Subtasks (${reminder.subtasks.filter(s => s.completed).length}/${reminder.subtasks.length})</strong>
+    `;
+
+    const subtaskList = document.createElement('div');
+    subtaskList.style.marginTop = '8px';
+
+    reminder.subtasks.forEach(subtask => {
+        const subtaskItem = document.createElement('div');
+        subtaskItem.style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #dee2e6;
+        `;
+
+        subtaskItem.innerHTML = `
+            <input type="checkbox"
+                   ${subtask.completed ? 'checked' : ''}
+                   onchange="toggleSubtask(${reminder.id}, ${subtask.id})"
+                   style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+            <span style="${subtask.completed ? 'text-decoration: line-through; color: #6c757d;' : ''} flex: 1;">
+                ${subtask.text}
+            </span>
+        `;
+
+        subtaskList.appendChild(subtaskItem);
+    });
+
+    subtaskSection.appendChild(subtaskList);
+    container.appendChild(subtaskSection);
+}
+
+function toggleSubtask(reminderId, subtaskId) {
+    const reminder = reminders.find(r => r.id === reminderId);
+    if (!reminder || !reminder.subtasks) return;
+
+    const subtask = reminder.subtasks.find(s => s.id === subtaskId);
+    if (!subtask) return;
+
+    subtask.completed = !subtask.completed;
+    subtask.completedAt = subtask.completed ? new Date().toISOString() : null;
+
+    // Save changes
+    localStorage.setItem('reminders', JSON.stringify(reminders));
+
+    // Sync to cloud if available
+    if (reminderSync && reminderSync.isSyncEnabled()) {
+        reminderSync.updateReminder(reminder).catch(err => {
+            console.error('Failed to sync subtask update:', err);
+        });
+    }
+
+    // Refresh display
+    addReminderToList(reminder);
+
+    // Check if all subtasks completed
+    const allCompleted = reminder.subtasks.every(s => s.completed);
+    if (allCompleted) {
+        showQuickFeedback(`ðŸŽ‰ All subtasks completed for "${reminder.title}"!`);
+    }
+
+    logAudit(`Subtask toggled in: ${reminder.title}`, 'user');
 }
 
 // ============= PHASE 1: SMART SCHEDULING ASSISTANT =============
@@ -944,7 +1154,11 @@ function applySuggestion(index) {
 }
 
 function closeSmartSuggestions() {
-    document.getElementById('smartSuggestionsModal').classList.remove('active');
+    const modal = document.getElementById('smartSuggestionsModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
     window.currentSuggestions = null;
 }
 
@@ -1147,11 +1361,11 @@ function getLocationData() {
 
 // ============= EVENT LISTENERS =============
 function setupEventListeners() {
-    console.log('📌 setupEventListeners() called');
+    console.log('ðŸ"Œ setupEventListeners() called');
 
     // Mode card click handlers
     const modeCards = document.querySelectorAll('.mode-card');
-    console.log('  → Mode cards found:', modeCards.length);
+    console.log('  â† Mode cards found:', modeCards.length);
     modeCards.forEach((card) => {
         card.addEventListener('click', function() {
             const mode = this.getAttribute('data-mode');
@@ -1163,91 +1377,103 @@ function setupEventListeners() {
     });
 
     // Settings button
+
+
     const settingsBtn = document.getElementById('settingsBtnTab');
-    console.log('  → Settings button:', settingsBtn ? 'found' : 'NOT FOUND');
+    console.log('  â† Settings button:', settingsBtn ? 'found' : 'NOT FOUND');
     if (settingsBtn) {
-        settingsBtn.addEventListener('click', function() {
-            console.log('🖱️ SETTINGS BUTTON CLICKED');
-            if (typeof showSettings === 'function') {
-                showSettings();
-            } else {
-                console.error('❌ showSettings function not defined');
-            }
+        // Remove any existing listeners first
+        const newSettingsBtn = settingsBtn.cloneNode(true);
+        settingsBtn.parentNode.replaceChild(newSettingsBtn, settingsBtn);
+
+        // Add listener with proper scope
+        newSettingsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('ðŸ–±ï¸ SETTINGS BUTTON CLICKED');
+            showSettings();
         });
+
+        // Also ensure the function is globally accessible
+        window.showSettings = showSettings;
     }
 
     // Tab buttons
     const tabs = document.querySelectorAll('.nav-tab');
-    console.log('  → Nav tabs found:', tabs.length);
+    console.log('  â† Nav tabs found:', tabs.length);
     tabs.forEach((tab, index) => {
         const tabName = tab.getAttribute('data-tab');
         console.log(`     Tab ${index}: ${tabName}`);
         tab.addEventListener('click', function() {
             const clickedTab = this.getAttribute('data-tab');
-            console.log('🖱️ TAB CLICKED:', clickedTab);
-            if (typeof showTab === 'function') {
-                showTab(clickedTab);
-            } else {
-                console.error('❌ showTab function not defined');
-            }
+            console.log('ðŸ–±ï¸ TAB CLICKED:', clickedTab);
+            showTab(clickedTab);
         });
     });
 
     // Schedule button
     const scheduleBtn = document.getElementById('scheduleBtn');
-    console.log('  → Schedule button:', scheduleBtn ? 'found' : 'NOT FOUND');
+    console.log('  â† Schedule button:', scheduleBtn ? 'found' : 'NOT FOUND');
     if (scheduleBtn) {
         scheduleBtn.addEventListener('click', function() {
-            console.log('🖱️ SCHEDULE BUTTON CLICKED');
-            if (typeof scheduleReminder === 'function') {
-                scheduleReminder();
-            } else {
-                console.error('❌ scheduleReminder function not defined');
-            }
+            console.log('ðŸ–±ï¸ SCHEDULE BUTTON CLICKED');
+            scheduleReminder();
         });
     }
 
-    // Filter button
+    // Filter/Search button
     const filterBtn = document.getElementById('filterBtn');
-    console.log('  → Filter button:', filterBtn ? 'found' : 'NOT FOUND');
+    console.log('  â† Filter button:', filterBtn ? 'found' : 'NOT FOUND');
     if (filterBtn) {
         filterBtn.addEventListener('click', function() {
-            if (typeof toggleFilters === 'function') {
-                toggleFilters();
-            } else {
-                console.error('❌ toggleFilters function not defined');
-            }
+            openSearch();
         });
     }
 
     // Export button
     const exportBtn = document.getElementById('exportBtn');
-    console.log('  → Export button:', exportBtn ? 'found' : 'NOT FOUND');
+    console.log('  â† Export button:', exportBtn ? 'found' : 'NOT FOUND');
     if (exportBtn) {
         exportBtn.addEventListener('click', function() {
-            if (typeof exportAllData === 'function') {
-                exportAllData();
-            } else {
-                console.error('❌ exportAllData function not defined');
-            }
+            exportAllData();
         });
     }
 
     // Tutorial button
     const tutorialBtn = document.getElementById('tutorialBtn');
-    console.log('  → Tutorial button:', tutorialBtn ? 'found' : 'NOT FOUND');
+    console.log('  â† Tutorial button:', tutorialBtn ? 'found' : 'NOT FOUND');
     if (tutorialBtn) {
         tutorialBtn.addEventListener('click', function() {
-            if (typeof restartTutorial === 'function') {
-                restartTutorial();
-            } else {
-                console.error('❌ restartTutorial function not defined');
-            }
+            restartTutorial();
         });
     }
 
-    console.log('✅ setupEventListeners() complete');
+    // Settings modal close button
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    console.log('  Close settings button:', closeSettingsBtn ? 'found' : 'NOT FOUND');
+    if (closeSettingsBtn) {
+        closeSettingsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('CLOSE SETTINGS CLICKED');
+            closeSettings();
+        });
+    }
+
+    // Settings modal save button
+    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    console.log('  Save settings button:', saveSettingsBtn ? 'found' : 'NOT FOUND');
+    if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('SAVE SETTINGS CLICKED');
+            saveAndCloseSettings(); // Use the save AND close function
+        });
+    }
+
+    console.log('âœ… setupEventListeners() complete');
 }
+
+
 
 // ============= MODE MANAGEMENT =============
 function selectMode(mode) {
@@ -1257,17 +1483,23 @@ function selectMode(mode) {
     localStorage.setItem('selectedMode', mode);
 
     document.body.className = mode + '-mode';
-    applyTheme(appSettings.theme); // Reapply theme after mode class
+    applyTheme(appSettings.theme);
 
     // Hide homepage, show app
     const homepage = document.getElementById('homepageView');
     const mainApp = document.getElementById('mainAppView');
 
     if (homepage && mainApp) {
+        console.log('🔄 Switching from homepage to main app');
         homepage.classList.remove('active');
         homepage.style.display = 'none';
         mainApp.classList.add('active');
         mainApp.style.display = 'block';
+        console.log('✅ Main app now visible');
+    } else {
+        console.error('❌ Homepage or mainApp not found!');
+        if (!homepage) console.error('  - homepage element missing');
+        if (!mainApp) console.error('  - mainApp element missing');
     }
 
     setupModeUI(mode);
@@ -1418,10 +1650,20 @@ function checkOnboarding() {
 function showOnboarding() {
     const onboardingView = document.getElementById('onboardingView');
     const homepage = document.getElementById('homepageView');
+    const mainApp = document.getElementById('mainAppView');
 
-    if (onboardingView && homepage) {
+    // Hide everything else
+    if (homepage) {
         homepage.classList.remove('active');
         homepage.style.display = 'none';
+    }
+    if (mainApp) {
+        mainApp.classList.remove('active');
+        mainApp.style.display = 'none';
+    }
+
+    // Show onboarding
+    if (onboardingView) {
         onboardingView.classList.add('active');
         onboardingView.style.display = 'block';
     }
@@ -1429,9 +1671,23 @@ function showOnboarding() {
     currentOnboardingStep = 0;
     showOnboardingStep(0);
 
-    // Setup onboarding buttons
-    document.getElementById('onboardingNext').addEventListener('click', nextOnboardingStep);
-    document.getElementById('onboardingSkip').addEventListener('click', skipOnboarding);
+    // Setup onboarding buttons - remove old listeners first
+    const nextBtn = document.getElementById('onboardingNext');
+    const skipBtn = document.getElementById('onboardingSkip');
+
+    if (nextBtn) {
+        // Clone to remove old listeners
+        const newNextBtn = nextBtn.cloneNode(true);
+        nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+        newNextBtn.addEventListener('click', nextOnboardingStep);
+    }
+
+    if (skipBtn) {
+        // Clone to remove old listeners
+        const newSkipBtn = skipBtn.cloneNode(true);
+        skipBtn.parentNode.replaceChild(newSkipBtn, skipBtn);
+        newSkipBtn.addEventListener('click', skipOnboarding);
+    }
 }
 
 function showOnboardingStep(step) {
@@ -1516,23 +1772,16 @@ function completeOnboarding() {
 }
 
 function restartTutorial() {
-    localStorage.setItem('onboardingComplete', 'false');
-    onboardingComplete = false;
-
-    // Close settings first
-    closeSettings();
-
-    // If in main app, go back to homepage first
-    const mainApp = document.getElementById('mainAppView');
-    if (mainApp && mainApp.classList.contains('active')) {
-        changeMode();
+    // Add confirmation dialog
+    if (confirm('Would you like to restart the tutorial?\n\nThis will guide you through all features of the app.')) {
+        // User clicked OK - start tutorial
+        currentOnboardingStep = 0;
+        showOnboarding(); // Fixed: was startOnboarding()
+        logAudit('Tutorial restarted', 'user');
+    } else {
+        // User clicked Cancel - do nothing
+        console.log('Tutorial restart cancelled by user');
     }
-
-    setTimeout(() => {
-        showOnboarding();
-    }, 300);
-
-    logAudit('Tutorial restarted', 'user');
 }
 
 // ============= WEEK 10: SECURITY & PIN/BIOMETRIC =============
@@ -1779,6 +2028,7 @@ function viewAuditLog() {
 function closeAuditLog() {
     const modal = document.getElementById('auditLogModal');
     if (modal) {
+        modal.style.display = 'none';
         modal.classList.remove('active');
     }
 }
@@ -1800,57 +2050,37 @@ function exportAuditLog() {
 // ============= SETTINGS MANAGEMENT =============
 
 function loadSettings() {
-    try {
-        const saved = localStorage.getItem('appSettings');
-        if (saved) {
-            appSettings = { ...appSettings, ...JSON.parse(saved) };
-        }
-
-        // Load PIN
-        const savedPin = localStorage.getItem('appPin');
-        if (savedPin) {
-            currentPin = atob(savedPin);
-        }
-
-        // Apply settings to UI
-        if (document.getElementById('soundEnabled')) {
-            document.getElementById('soundEnabled').checked = appSettings.soundEnabled;
-        }
-        if (document.getElementById('vibrationEnabled')) {
-            document.getElementById('vibrationEnabled').checked = appSettings.vibrationEnabled;
-        }
-        if (document.getElementById('voiceGuidance')) {
-            document.getElementById('voiceGuidance').checked = appSettings.voiceGuidance;
-        }
-        if (document.getElementById('pinEnabled')) {
-            document.getElementById('pinEnabled').checked = appSettings.pinEnabled;
-        }
-        if (document.getElementById('biometricEnabled')) {
-            document.getElementById('biometricEnabled').checked = appSettings.biometricEnabled;
-        }
-        if (document.getElementById('auditLogEnabled')) {
-            document.getElementById('auditLogEnabled').checked = appSettings.auditLogEnabled;
-        }
-        if (document.getElementById('themeSelect')) {
-            document.getElementById('themeSelect').value = appSettings.theme;
-        }
-        if (document.getElementById('fontSize')) {
-            document.getElementById('fontSize').value = appSettings.fontSize;
-        }
-
-    } catch (error) {
-        console.error('Failed to load settings:', error);
+    const saved = localStorage.getItem('appSettings');
+    if (saved) {
+        appSettings = JSON.parse(saved);
     }
+
+    // FORCE audit log to always be enabled
+    appSettings.auditLogEnabled = true;
+
+    // Save to ensure it's persisted
+    saveSettings();
 }
 
 function saveSettings() {
+    // This is called by onChange events - just save without closing
     appSettings.soundEnabled = document.getElementById('soundEnabled')?.checked ?? true;
     appSettings.vibrationEnabled = document.getElementById('vibrationEnabled')?.checked ?? true;
     appSettings.voiceGuidance = document.getElementById('voiceGuidance')?.checked ?? false;
-    appSettings.auditLogEnabled = document.getElementById('auditLogEnabled')?.checked ?? false;
+    appSettings.auditLogEnabled = true;
 
     localStorage.setItem('appSettings', JSON.stringify(appSettings));
-    console.log('Settings saved');
+    applyTheme(appSettings.theme);
+    applyFontSize(appSettings.fontSize);
+    console.log('Settings auto-saved');
+}
+
+function saveAndCloseSettings() {
+    // This is called by the Save button - save AND close
+    saveSettings(); // Save the settings
+    closeSettings(); // Close the modal
+    showQuickFeedback('✓ Settings saved');
+    logAudit('Settings saved', 'user');
 }
 
 // ============= REMINDER MANAGEMENT =============
@@ -1915,6 +2145,9 @@ async function scheduleReminder() {  // ← Add async here
         project: project,
         completed: false,
         completedDate: null,
+        createdDate: new Date().toISOString(),  // ADD THIS
+        lastModified: new Date().toISOString(), // ADD THIS
+        modificationHistory: [],                // ADD THIS
         comments: [],
         subtasks: subtasks,
         recurring: recurring,
@@ -1983,6 +2216,8 @@ async function scheduleReminder() {  // ← Add async here
     // PHASE 1: Update productivity patterns
     analyzeProductivityPatterns();
 }
+// Success feedback - ADD THIS
+    showQuickFeedback(`✅ Success! "${title}" scheduled for ${datetime.toLocaleString()} 🎯`);
 
 function addReminderToList(reminder) {
     const reminderListEl = document.getElementById('reminderList');
@@ -2001,16 +2236,23 @@ function addReminderToList(reminder) {
     info.className = 'reminder-info';
     const datetime = new Date(reminder.datetime);
 
-    // UPDATED: Add mode badge
+    // Mode badge
     const modeBadge = reminder.mode ?
         `<span class="mode-badge ${reminder.mode}">${getModeIcon(reminder.mode)} ${reminder.mode.toUpperCase()}</span>` : '';
 
+    // Location badge - NEW!
+    const locationBadge = reminder.location && reminder.location.enabled ?
+        `<span class="location-badge" style="background: #17a2b8; color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 5px;">
+            ðŸ" ${reminder.location.trigger === 'arrive' ? 'When arriving' : 'When leaving'}: ${reminder.location.address}
+        </span>` : '';
+
     info.innerHTML = `
-        <strong>${reminder.title}${modeBadge}</strong><br>
+        <strong>${reminder.title}${modeBadge}${locationBadge}</strong><br>
         ${reminder.text}<br>
-        <small>📅 ${datetime.toLocaleString()}</small>
-        ${reminder.repeatMinutes > 0 ? `<br><small>🔁 Repeats every ${reminder.repeatMinutes} min</small>` : ''}
-        ${reminder.project && reminder.project !== 'none' ? `<br><small>📁 ${reminder.project}</small>` : ''}
+        <small>ðŸ"… ${datetime.toLocaleString()}</small>
+        ${reminder.repeatMinutes > 0 ? `<br><small>ðŸ" Repeats every ${reminder.repeatMinutes} min</small>` : ''}
+        ${reminder.project && reminder.project !== 'none' ? `<br><small>ðŸ" ${reminder.project}</small>` : ''}
+        ${reminder.subtasks && reminder.subtasks.length > 0 ? `<br><small>âœ… ${reminder.subtasks.filter(s => s.completed).length}/${reminder.subtasks.length} subtasks completed</small>` : ''}
     `;
 
     // UPDATED: Show comments if any
@@ -2041,6 +2283,8 @@ function addReminderToList(reminder) {
     const commentBtn = document.createElement('button');
     commentBtn.textContent = '💬 Comment';
     commentBtn.onclick = () => openCommentModal(reminder.id);
+
+displaySubtasks(reminder, info);
 
     // Edit button
     const editBtn = document.createElement('button');
@@ -2109,29 +2353,54 @@ function saveComment() {
     const commentText = document.getElementById('newCommentText').value.trim();
 
     if (!commentText) {
-        alert('Please enter a comment.');
+        alert('Please enter a comment before saving.');
         return;
     }
 
     const reminder = reminders.find(r => r.id === currentCommentReminderId);
-    if (!reminder) return;
+    if (!reminder) {
+        alert('Error: Reminder not found.');
+        return;
+    }
 
     if (!reminder.comments) {
         reminder.comments = [];
     }
 
-    reminder.comments.push({
+    const comment = {
         text: commentText,
-        timestamp: new Date().toISOString()
-    });
+        timestamp: new Date().toISOString(),
+        user: authManager && authManager.getCurrentUser() ? authManager.getCurrentUser().email : 'local user'
+    };
 
+    reminder.comments.push(comment);
+
+    // Save to localStorage
     localStorage.setItem('reminders', JSON.stringify(reminders));
+
+    // Sync to cloud if available
+    if (reminderSync && reminderSync.isSyncEnabled()) {
+        reminderSync.updateReminder(reminder).catch(err => {
+            console.error('Failed to sync comment:', err);
+        });
+    }
+
+    // Refresh the reminder display
     addReminderToList(reminder);
 
-    document.getElementById('commentModal').classList.remove('active');
+    // Close modal properly
+    const modal = document.getElementById('commentModal');
+    modal.style.display = 'none';
+    modal.classList.remove('active');
+
+    // Clear the input
+    document.getElementById('newCommentText').value = '';
     currentCommentReminderId = null;
 
     logAudit('Comment added to: ' + reminder.title, 'user');
+
+    // Show success feedback
+    showQuickFeedback(`💬 Comment added to "${reminder.title}"!`);
 }
 
 function cancelComment() {
@@ -2176,7 +2445,7 @@ function openEditModal(reminder) {
     logAudit('Opened edit modal for: ' + reminder.title, 'user');
 }
 
-function saveEdit() {
+async function saveEdit() {
     console.log('💾 Saving edit');
     if (!editingReminder) {
         console.error('No reminder being edited');
@@ -2189,28 +2458,70 @@ function saveEdit() {
     const repeatMinutes = parseInt(document.getElementById('editRepeatInterval').value) || 0;
 
     if (!title || !text || !datetimeStr) {
-        alert('Please fill in all required fields');
+        alert('Please fill in all required fields to update the reminder.');
         return;
     }
 
     const datetime = new Date(datetimeStr);
     if (isNaN(datetime.getTime())) {
-        alert('Invalid date/time');
+        alert('Invalid date/time format. Please check your input.');
         return;
     }
 
-    // Update reminder
+    // Track what changed
+    const changes = [];
+    if (editingReminder.title !== title) changes.push(`Title: "${editingReminder.title}" → "${title}"`);
+    if (editingReminder.text !== text) changes.push(`Description updated`);
+    if (editingReminder.datetime !== datetime.toISOString()) {
+        const oldDate = new Date(editingReminder.datetime);
+        changes.push(`Date/Time: ${oldDate.toLocaleString()} → ${datetime.toLocaleString()}`);
+    }
+    if (editingReminder.repeatMinutes !== repeatMinutes) {
+        changes.push(`Repeat interval: ${editingReminder.repeatMinutes || 0} → ${repeatMinutes} minutes`);
+    }
+
+    // Create modification record
+    const modification = {
+        timestamp: new Date().toISOString(),
+        changes: changes,
+        user: authManager && authManager.getCurrentUser() ? authManager.getCurrentUser().email : 'local user'
+    };
+
+    // Initialize modification history if it doesn't exist
+    if (!editingReminder.modificationHistory) {
+        editingReminder.modificationHistory = [];
+    }
+
+    // Add to modification history
+    editingReminder.modificationHistory.push(modification);
+
+    // Update reminder fields
     editingReminder.title = title;
     editingReminder.text = text;
     editingReminder.datetime = datetime.toISOString();
     editingReminder.repeatMinutes = repeatMinutes;
+    editingReminder.lastModified = new Date().toISOString();
 
     if (currentMode === 'work' || currentMode === 'adhd') {
-        editingReminder.priority = document.getElementById('editPriority').value;
+        const priorityEl = document.getElementById('editPriority');
+        if (priorityEl && editingReminder.priority !== priorityEl.value) {
+            changes.push(`Priority: ${editingReminder.priority} → ${priorityEl.value}`);
+            editingReminder.priority = priorityEl.value;
+        }
     }
 
     // Save to localStorage
     localStorage.setItem('reminders', JSON.stringify(reminders));
+
+    // Sync to cloud if available
+    if (reminderSync && reminderSync.isSyncEnabled()) {
+        try {
+            await reminderSync.updateReminder(editingReminder);
+            console.log('Update synced to cloud');
+        } catch (error) {
+            console.error('Cloud sync failed:', error);
+        }
+    }
 
     // Re-schedule notification
     cordova.plugins.notification.local.cancel(editingReminder.id);
@@ -2232,7 +2543,10 @@ function saveEdit() {
     cancelEdit();
 
     console.log('✅ Reminder updated');
-    logAudit('Edited reminder: ' + title, 'user');
+    logAudit('Edited reminder: ' + title + ' - Changes: ' + changes.join(', '), 'user');
+
+    // Show success feedback
+    showQuickFeedback(`✅ Reminder "${title}" updated successfully!`);
 }
 
 function cancelEdit() {
@@ -2573,30 +2887,41 @@ function updateAnalytics() {
 function showTab(tabName) {
     console.log('📑 SHOW TAB:', tabName);
 
-    // Hide all tabs
-    const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => {
+    // Hide all tab contents
+    const allTabContents = document.querySelectorAll('.tab-content');
+    allTabContents.forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';
+    });
+
+    // Remove active class from all tab buttons
+    const allTabs = document.querySelectorAll('.nav-tab');
+    allTabs.forEach(tab => {
         tab.classList.remove('active');
     });
 
-    // Show selected tab
+    // Show selected tab content
     const selectedTab = document.getElementById(tabName + 'Tab');
     if (selectedTab) {
         selectedTab.classList.add('active');
+        selectedTab.style.display = 'block';
+        console.log('✅ Tab shown:', tabName);
+    } else {
+        console.error('❌ Tab not found:', tabName + 'Tab');
     }
 
-    // Update nav buttons
-    const navTabs = document.querySelectorAll('.nav-tab');
-    navTabs.forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.getAttribute('data-tab') === tabName) {
-            tab.classList.add('active');
-        }
-    });
+    // Activate corresponding tab button
+    const tabButton = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+    if (tabButton) {
+        tabButton.classList.add('active');
+    }
 
-    // ADDED: Refresh content based on tab
-if (tabName === 'analytics') {
-    refreshAnalyticsPhase2(); // Changed from refreshAnalytics()
+    // Update analytics if switching to analytics tab
+    if (tabName === 'analytics') {
+        updateAnalytics();
+    }
+
+    logAudit('Switched to tab: ' + tabName, 'user');
 }
 
 function loadCompletedTab() {
@@ -2646,6 +2971,7 @@ function showCelebration(reminder) {
 function closeCelebration() {
     const modal = document.getElementById('celebrationModal');
     if (modal) {
+        modal.style.display = 'none';
         modal.classList.remove('active');
     }
 }
@@ -3550,54 +3876,129 @@ function showSettings() {
         modal.classList.add('active');
     }
 
-    logAudit('Settings opened', 'navigation');
+    const auditToggle = document.querySelector('input[type="checkbox"][onchange*="auditLog"]');
+    if (auditToggle) {
+        const auditToggleContainer = auditToggle.closest('label');
+        if (auditToggleContainer) {
+            auditToggleContainer.style.display = 'none';
+        }
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    logAudit('Settings opened', 'user');
 }
 
 function closeSettings() {
     const modal = document.getElementById('settingsModal');
     if (modal) {
+        modal.style.display = 'none';
         modal.classList.remove('active');
     }
+    logAudit('Settings closed', 'user');
 }
 
 // ============= DATA EXPORT & MANAGEMENT =============
 
-function exportAllData() {
-    const data = {
-        reminders: reminders,
-        completedToday: completedToday,
-        completedHistory: completedHistory,
-        settings: appSettings,
-        mode: currentMode,
-        exportDate: new Date().toISOString(),
-        version: '1.0'
-    };
+async function exportAllData() {
+    console.log('ðŸ"¥ Exporting all data...');
 
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    try {
+        // Gather all data
+        const exportData = {
+            reminders: reminders,
+            completedToday: completedToday,
+            completedHistory: completedHistory,
+            settings: appSettings,
+            currentMode: currentMode,
+            auditLog: auditLog,
+            customTemplates: customTemplates || [],
+            exportDate: new Date().toISOString(),
+            appVersion: '1.0.0'
+        };
+
+        const jsonData = JSON.stringify(exportData, null, 2);
+        const fileName = `reminder-app-backup-${new Date().toISOString().slice(0,10)}.json`;
+
+        // Check if we're on Cordova (mobile)
+        if (typeof cordova !== 'undefined' && cordova.file) {
+            // Mobile: Use Cordova File plugin
+            try {
+                const directory = cordova.file.externalDataDirectory || cordova.file.dataDirectory;
+
+                window.resolveLocalFileSystemURL(directory, function(dirEntry) {
+                    dirEntry.getFile(fileName, { create: true, exclusive: false }, function(fileEntry) {
+                        fileEntry.createWriter(function(fileWriter) {
+                            fileWriter.onwriteend = function() {
+                                console.log('âœ… File written successfully');
+
+                                // Show success with file location
+                                const filePath = fileEntry.nativeURL || fileEntry.toURL();
+                                alert(`âœ… Export Successful!\n\nFile saved to:\n${filePath}\n\nYou can find this file in your device's file manager or connect to a computer to access it.`);
+
+                                logAudit('Data exported to: ' + fileName, 'user');
+
+                                // Try to open/share the file
+                                if (window.plugins && window.plugins.socialsharing) {
+                                    window.plugins.socialsharing.shareWithOptions({
+                                        message: 'Reminder App Backup',
+                                        subject: 'Reminder App Data Export',
+                                        files: [filePath]
+                                    });
+                                }
+                            };
+
+                            fileWriter.onerror = function(e) {
+                                console.error('File write error:', e);
+                                alert('âŒ Failed to write file: ' + e.toString());
+                            };
+
+                            const blob = new Blob([jsonData], { type: 'application/json' });
+                            fileWriter.write(blob);
+
+                        }, function(error) {
+                            console.error('Create writer error:', error);
+                            alert('âŒ Failed to create file writer: ' + error.message);
+                        });
+                    }, function(error) {
+                        console.error('Get file error:', error);
+                        alert('âŒ Failed to access file: ' + error.message);
+                    });
+                }, function(error) {
+                    console.error('Directory error:', error);
+                    alert('âŒ Failed to access storage: ' + error.message);
+                });
+
+            } catch (error) {
+                console.error('Cordova file error:', error);
+                // Fallback to browser method
+                downloadViaBrowser(jsonData, fileName);
+            }
+        } else {
+            // Browser: Use download link
+            downloadViaBrowser(jsonData, fileName);
+        }
+
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('âŒ Export failed: ' + error.message);
+    }
+}
+
+function downloadViaBrowser(data, fileName) {
+    const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `reminder_app_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.download = fileName;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-    // Also create CSV
-    let csv = 'Title,Description,Due Date,Status,Priority,Mode,Created At,Completed At\n';
-    const allTasks = [...reminders, ...completedToday];
-    allTasks.forEach(r => {
-        csv += `"${r.title}","${r.text}","${r.datetime}","${r.completed ? 'Completed' : 'Active'}","${r.priority || 'N/A'}","${r.mode || 'N/A'}","${r.createdAt || 'N/A'}","${r.completedAt || 'N/A'}"\n`;
-    });
-
-    const csvBlob = new Blob([csv], { type: 'text/csv' });
-    const csvUrl = URL.createObjectURL(csvBlob);
-    const csvA = document.createElement('a');
-    csvA.href = csvUrl;
-    csvA.download = `reminders_${new Date().toISOString().slice(0,10)}.csv`;
-    csvA.click();
-
-    logAudit('All data exported', 'system');
-    speakText('Data exported successfully');
-    alert('✅ Data exported successfully! Check your downloads folder.');
+    showQuickFeedback(`✅ Data exported! Check your Downloads folder for ${fileName}`);
+    logAudit('Data exported (browser): ' + fileName, 'user');
 }
 
 function clearAllData() {
@@ -3947,6 +4348,8 @@ window.clearFilters = clearFilters;
 window.handlePhotoUpload = handlePhotoUpload;
 window.toggleVoiceRecording = toggleVoiceRecording;
 window.saveSettings = saveSettings;
+window.saveAndCloseSettings = saveAndCloseSettings;
+window.closeSmartSuggestions = closeSmartSuggestions;
 window.cancelEdit = function() {
     document.getElementById('editModal')?.classList.remove('active');
 };
@@ -3966,4 +4369,509 @@ setInterval(() => {
 
 console.log('=== REMINDER APP v1.0 LOADED ===');
 console.log('📱 All 12 weeks of features implemented');
-console.log('✅ Core reminders, Modes, Customization, Onboarding, Security, Testing');}
+console.log('✅ Core reminders, Modes, Customization, Onboarding, Security, Testing');
+
+function saveFilterSettings() {
+    const filterSettings = {
+        work: document.getElementById('filterWork').checked,
+        adhd: document.getElementById('filterAdhd').checked,
+        memory: document.getElementById('filterMemory').checked,
+        showPriority: document.getElementById('settingsFilterPriority').checked,
+        showAllModes: document.getElementById('settingsShowAllModes').checked
+    };
+
+    localStorage.setItem('filterSettings', JSON.stringify(filterSettings));
+    applyModeFilters(); // Reapply filters immediately
+
+    logAudit('Filter settings updated', 'user');
+}
+
+function loadFilterSettings() {
+    const saved = localStorage.getItem('filterSettings');
+    if (saved) {
+        const settings = JSON.parse(saved);
+
+        const filterWork = document.getElementById('filterWork');
+        const filterAdhd = document.getElementById('filterAdhd');
+        const filterMemory = document.getElementById('filterMemory');
+        const filterPriority = document.getElementById('settingsFilterPriority');
+        const showAllModes = document.getElementById('settingsShowAllModes');
+
+        if (filterWork) filterWork.checked = settings.work !== false;
+        if (filterAdhd) filterAdhd.checked = settings.adhd !== false;
+        if (filterMemory) filterMemory.checked = settings.memory !== false;
+        if (filterPriority) filterPriority.checked = settings.showPriority !== false;
+        if (showAllModes) showAllModes.checked = settings.showAllModes !== false;
+    }
+}
+
+// Update applyModeFilters function to check settings:
+function applyModeFilters() {
+    const filterWork = document.getElementById('filterWork');
+    const filterAdhd = document.getElementById('filterAdhd');
+    const filterMemory = document.getElementById('filterMemory');
+
+    if (!filterWork || !filterAdhd || !filterMemory) {
+        console.log('Filter checkboxes not found');
+        return;
+    }
+
+    const showWork = filterWork.checked;
+    const showAdhd = filterAdhd.checked;
+    const showMemory = filterMemory.checked;
+
+    // Get all reminder list items
+    const allReminders = document.querySelectorAll('#reminderList li');
+
+    allReminders.forEach(li => {
+        const reminderId = parseInt(li.id.replace('reminder-', ''));
+        const reminder = reminders.find(r => r.id === reminderId);
+
+        if (!reminder) {
+            li.style.display = 'none';
+            return;
+        }
+
+        let shouldShow = false;
+
+        if (reminder.mode === 'work' && showWork) shouldShow = true;
+        if (reminder.mode === 'adhd' && showAdhd) shouldShow = true;
+        if (reminder.mode === 'memory' && showMemory) shouldShow = true;
+
+        // If no mode specified, default to showing if current mode filter is on
+        if (!reminder.mode) {
+            shouldShow = true;
+        }
+
+        li.style.display = shouldShow ? 'block' : 'none';
+    });
+
+    updateReminderCount();
+}
+
+// Call loadFilterSettings in the loadSettings function:
+function loadSettings() {
+    const saved = localStorage.getItem('appSettings');
+    if (saved) {
+        appSettings = JSON.parse(saved);
+    }
+
+    // Enable audit log by default (FIX #12)
+    if (appSettings.auditLogEnabled === undefined) {
+        appSettings.auditLogEnabled = true;
+        saveSettings();
+    }
+
+    loadFilterSettings(); // Add this line
+}
+
+// Add styles to document
+const styleElement = document.createElement('style');
+styleElement.textContent = templateStyles;
+document.head.appendChild(styleElement);
+
+// Update the template display function:
+function displayTemplates() {
+    const container = document.getElementById('templateList');
+    if (!container) return;
+
+    container.innerHTML = ''; // Clear existing
+
+    if (customTemplates.length === 0) {
+        container.innerHTML = `
+            <div class="template-empty-state">
+                <p>ðŸ" No templates yet!</p>
+                <p>Create your first template to save time on recurring tasks.</p>
+            </div>
+        `;
+        return;
+    }
+
+    customTemplates.forEach((template, index) => {
+        const item = document.createElement('div');
+        item.className = 'template-item';
+        item.onclick = () => applyTemplate(index);
+
+        const categoryIcon = {
+            work: 'ðŸ',
+            adhd: 'âš¡',
+            memory: 'ðŸ§ ',
+            personal: 'ðŸ"'
+        }[template.category] || 'ðŸ"‹';
+
+        item.innerHTML = `
+            <h4>${categoryIcon} ${template.name}</h4>
+            <p>${template.description || 'Quick template'}</p>
+            <small style="color: #adb5bd;">${template.category.toUpperCase()}</small>
+        `;
+
+        container.appendChild(item);
+    });
+}
+
+function openSearch() {
+    const modal = document.getElementById('searchModal');
+    if (!modal) {
+        console.error('Search modal not found');
+        return;
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('active');
+
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+
+        // Add real-time search
+        searchInput.addEventListener('input', performSearch);
+    }
+
+    logAudit('Opened search', 'user');
+}
+
+function closeSearch() {
+    const modal = document.getElementById('searchModal');
+    if (modal) {
+        modal.style.display = 'none';
+        modal.classList.remove('active');
+    }
+}
+
+function performSearch() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    const resultsContainer = document.getElementById('searchResults');
+
+    if (!searchTerm) {
+        resultsContainer.innerHTML = '<p style="text-align: center; color: #666;">Enter search terms above to find reminders</p>';
+        return;
+    }
+
+    // Search through all reminders (active and completed)
+    const allReminders = [...reminders, ...completedHistory];
+
+    const results = allReminders.filter(reminder => {
+        const titleMatch = reminder.title.toLowerCase().includes(searchTerm);
+        const textMatch = reminder.text.toLowerCase().includes(searchTerm);
+        const projectMatch = reminder.project && reminder.project.toLowerCase().includes(searchTerm);
+        const modeMatch = reminder.mode && reminder.mode.toLowerCase().includes(searchTerm);
+
+        return titleMatch || textMatch || projectMatch || modeMatch;
+    });
+
+    if (results.length === 0) {
+        resultsContainer.innerHTML = `
+            <p style="text-align: center; color: #666;">
+                No reminders found matching "${searchTerm}"
+            </p>
+        `;
+        return;
+    }
+
+    // Display results
+    resultsContainer.innerHTML = results.map(reminder => {
+        const date = new Date(reminder.datetime);
+        const status = reminder.completed ? 'âœ… Completed' : 'â³ Active';
+        const modeIcon = getModeIcon(reminder.mode);
+
+        return `
+            <div class="search-result-item" style="
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                padding: 15px;
+                margin: 10px 0;
+                background: ${reminder.completed ? '#f0f0f0' : 'white'};
+                cursor: pointer;
+            " onclick="goToReminder(${reminder.id})">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 8px 0;">
+                            ${modeIcon} ${reminder.title}
+                        </h4>
+                        <p style="margin: 0 0 8px 0; color: #666;">
+                            ${reminder.text}
+                        </p>
+                        <small style="color: #999;">
+                            ðŸ"… ${date.toLocaleString()}
+                            ${reminder.project && reminder.project !== 'none' ? ` • ðŸ" ${reminder.project}` : ''}
+                        </small>
+                    </div>
+                    <div style="margin-left: 15px;">
+                        <span style="
+                            padding: 4px 12px;
+                            border-radius: 12px;
+                            font-size: 12px;
+                            background: ${reminder.completed ? '#28a745' : '#ffc107'};
+                            color: white;
+                            white-space: nowrap;
+                        ">
+                            ${status}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    logAudit(`Search performed: "${searchTerm}" - ${results.length} results`, 'user');
+}
+
+function goToReminder(reminderId) {
+    closeSearch();
+
+    // Check if reminder is active or completed
+    const activeReminder = reminders.find(r => r.id === reminderId);
+
+    if (activeReminder) {
+        // Switch to reminders tab
+        showTab('reminders');
+
+        // Highlight the reminder
+        const reminderElement = document.getElementById('reminder-' + reminderId);
+        if (reminderElement) {
+            reminderElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            reminderElement.style.animation = 'highlight 1s ease';
+
+            // Add highlight animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes highlight {
+                    0%, 100% { background: inherit; }
+                    50% { background: #ffffcc; }
+                }
+            `;
+            if (!document.getElementById('highlightAnimation')) {
+                style.id = 'highlightAnimation';
+                document.head.appendChild(style);
+            }
+        }
+    } else {
+        // Must be in completed history
+        showTab('completed');
+        showQuickFeedback(`ðŸ"Ž Found in completed tasks!`);
+    }
+}
+
+// Update the filter button event listener to open search:
+// In setupEventListeners function:
+const filterBtn = document.getElementById('filterBtn');
+if (filterBtn) {
+    filterBtn.addEventListener('click', function() {
+        openSearch(); // Changed from toggleFilters
+    });
+}
+function showSmartSchedulingAssistant() {
+    const title = document.getElementById('title').value.trim();
+
+    if (!title) {
+        alert('ðŸ" Please enter a task title first so the assistant can provide relevant scheduling suggestions.');
+        document.getElementById('title').focus();
+        return;
+    }
+
+    // Analyze productivity patterns if not already done
+    if (!userProductivityPatterns) {
+        analyzeProductivityPatterns();
+    }
+
+    // Check if we have enough data
+    if (!userProductivityPatterns || reminders.length < 5) {
+        showSmartSchedulingIntro();
+        return;
+    }
+
+    // Show smart suggestions
+    showSmartSuggestions(title);
+}
+
+function showSmartSchedulingIntro() {
+    const modal = document.getElementById('smartSuggestionsModal');
+    const list = document.getElementById('smartSuggestionsList');
+
+    list.innerHTML = `
+        <div style="text-align: center; padding: 30px;">
+            <div style="font-size: 64px; margin-bottom: 20px;">ðŸ¤–</div>
+            <h3>Smart Scheduling Assistant</h3>
+            <p style="color: #666; margin: 20px 0;">
+                I'll learn your productivity patterns as you complete more tasks!
+            </p>
+            <p style="color: #666;">
+                Once you have completed 5 or more tasks, I'll be able to suggest optimal times
+                for scheduling based on when you're most productive.
+            </p>
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                <strong>Current Progress:</strong><br>
+                ${completedHistory.length} tasks completed<br>
+                ${completedHistory.length < 5 ? `${5 - completedHistory.length} more to unlock smart suggestions!` : 'Ready to use!'}
+            </div>
+            <div style="margin-top: 20px;">
+                <button onclick="closeSmartSuggestions()" class="btn-primary">Got it!</button>
+            </div>
+        </div>
+    `;
+
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+}
+
+function showQuickFeedback(message, duration = 3000) {
+    let feedback = document.getElementById('quickFeedback');
+
+    if (!feedback) {
+        feedback = document.createElement('div');
+        feedback.id = 'quickFeedback';
+        feedback.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            font-size: 16px;
+            font-weight: 500;
+            max-width: 80%;
+            text-align: center;
+            animation: slideDown 0.3s ease;
+        `;
+        document.body.appendChild(feedback);
+    }
+
+    feedback.textContent = message;
+    feedback.style.display = 'block';
+
+    setTimeout(() => {
+        feedback.style.animation = 'slideUp 0.3s ease';
+        setTimeout(() => {
+            feedback.style.display = 'none';
+        }, 300);
+    }, duration);
+}
+
+function viewModificationHistory(reminderId) {
+    const reminder = reminders.find(r => r.id === reminderId);
+    if (!reminder || !reminder.modificationHistory) return;
+
+    let historyHTML = `
+        <div style="max-height: 400px; overflow-y: auto;">
+            <h3>📄 Modification History: ${reminder.title}</h3>
+    `;
+
+    reminder.modificationHistory.forEach((mod, index) => {
+        historyHTML += `
+            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px;">
+                <strong>Change #${index + 1}</strong><br>
+                <small>${new Date(mod.timestamp).toLocaleString()}</small><br>
+                <ul style="margin: 10px 0;">
+                    ${mod.changes.map(change => `<li>${change}</li>`).join('')}
+                </ul>
+                <small>By: ${mod.user}</small>
+            </div>
+        `;
+    });
+
+    historyHTML += '</div>';
+
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-content">
+            ${historyHTML}
+            <button onclick="this.closest('.modal').remove()" class="btn-primary">Close</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+function displaySubtasks(reminder, container) {
+    if (!reminder.subtasks || reminder.subtasks.length === 0) {
+        return;
+    }
+
+    const subtaskSection = document.createElement('div');
+    subtaskSection.className = 'subtask-section';
+
+    subtaskSection.innerHTML = `
+        <strong style="font-size: 14px;">✅ Subtasks (${reminder.subtasks.filter(s => s.completed).length}/${reminder.subtasks.length})</strong>
+    `;
+
+    const subtaskList = document.createElement('div');
+    subtaskList.style.marginTop = '8px';
+
+    reminder.subtasks.forEach(subtask => {
+        const subtaskItem = document.createElement('div');
+        subtaskItem.style.cssText = `
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #dee2e6;
+        `;
+
+        subtaskItem.innerHTML = `
+            <input type="checkbox"
+                   ${subtask.completed ? 'checked' : ''}
+                   onchange="toggleSubtask(${reminder.id}, ${subtask.id})"
+                   style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+            <span style="${subtask.completed ? 'text-decoration: line-through; color: #6c757d;' : ''} flex: 1;">
+                ${subtask.text}
+            </span>
+        `;
+
+        subtaskList.appendChild(subtaskItem);
+    });
+
+    subtaskSection.appendChild(subtaskList);
+    container.appendChild(subtaskSection);
+}
+
+function goToReminder(reminderId) {
+    closeSearch();
+
+    const activeReminder = reminders.find(r => r.id === reminderId);
+
+    if (activeReminder) {
+        showTab('reminders');
+
+        const reminderElement = document.getElementById('reminder-' + reminderId);
+        if (reminderElement) {
+            reminderElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            reminderElement.style.animation = 'highlight 1s ease';
+        }
+    } else {
+        showTab('completed');
+        showQuickFeedback(`🔎 Found in completed tasks!`);
+    }
+}
+
+function debugViewState() {
+    console.log('=== VIEW STATE DEBUG ===');
+    const views = {
+        signInScreen: document.getElementById('signInScreen'),
+        homepageView: document.getElementById('homepageView'),
+        mainAppView: document.getElementById('mainAppView'),
+        onboardingView: document.getElementById('onboardingView'),
+        pinLockView: document.getElementById('pinLockView')
+    };
+
+    Object.keys(views).forEach(name => {
+        const el = views[name];
+        if (el) {
+            const display = window.getComputedStyle(el).display;
+            const visible = display !== 'none';
+            console.log(`  ${name}: ${visible ? '✅ VISIBLE' : '❌ HIDDEN'} (display: ${display})`);
+        } else {
+            console.log(`  ${name}: ❌ NOT FOUND`);
+        }
+    });
+    console.log('======================');
+}
+
+// Make it globally accessible for testing
+window.debugViewState = debugViewState;
+
+console.log('✅ Reminder app fully loaded');

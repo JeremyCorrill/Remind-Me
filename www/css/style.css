@@ -2089,3 +2089,267 @@ body.memory-mode .reminder-info {
         margin-bottom: 15px;
     }
 }
+@keyframes slideDown {
+    from { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { transform: translateX(-50%) translateY(0); opacity: 1; }
+    to { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+}
+
+@keyframes highlight {
+    0%, 100% { background: inherit; }
+    50% { background: #ffffcc; }
+}
+
+/* Template Improvements */
+.template-section {
+    background: #f8f9fa;
+    border: 2px dashed #6c757d;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.template-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+    min-height: 100px;
+}
+
+.template-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.template-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    border-color: #007bff;
+}
+
+/* Location Badge */
+.location-badge {
+    background: #17a2b8;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 5px;
+}
+
+/* Subtask Section */
+.subtask-section {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 3px solid #007bff;
+}
+
+/* Modification History */
+.modification-history {
+    margin-top: 10px;
+    padding: 10px;
+    background: #fff3cd;
+    border-radius: 6px;
+    border-left: 3px solid #ffc107;
+    font-size: 12px;
+}
+
+.view-history-btn {
+    background: none;
+    border: none;
+    color: #007bff;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0;
+    margin-left: 10px;
+}
+
+/* Smart Schedule Button */
+.smart-schedule-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.smart-suggestion-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.smart-suggestion-card:hover {
+    border-color: #667eea;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.suggestion-reason {
+    color: #666;
+    font-size: 14px;
+    margin: 10px 0 0 0;
+    font-style: italic;
+}
+
+/* Search Results */
+.search-result-item {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 10px 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.search-result-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transform: translateX(5px);
+}
+
+const templateStyles = `
+/* Template Section Improvements */
+.template-section {
+    background: #f8f9fa;
+    border: 2px dashed #6c757d;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.template-section h3 {
+    margin-top: 0;
+    color: #495057;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.template-section h3::before {
+    content: 'ðŸ"‹';
+    font-size: 24px;
+}
+
+.template-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 15px 0;
+    min-height: 100px;
+}
+
+.template-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.template-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    border-color: #007bff;
+}
+
+.template-item h4 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #212529;
+}
+
+.template-item p {
+    margin: 0;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.template-empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.create-template-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.create-template-btn:hover {
+    background: #0056b3;
+}
+
+.create-template-btn::before {
+    content: '+';
+    font-size: 20px;
+    font-weight: bold;
+}
+`;
+
+const smartScheduleStyles = `
+.smart-schedule-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.smart-suggestion-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.smart-suggestion-card:hover {
+    border-color: #667eea;
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.smart-suggestion-card h4 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+.suggestion-reason {
+    color: #666;
+    font-size: 14px;
+    margin: 10px 0 0 0;
+    font-style: italic;
+}
+`;
+
+// Add these styles
+const smartStyleElement = document.createElement('style');
+smartStyleElement.textContent = smartScheduleStyles;
+document.head.appendChild(smartStyleElement);

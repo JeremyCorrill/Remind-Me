@@ -159,23 +159,6 @@
             <button onclick="clearFilters()">Clear Filters</button>
         </div>
 
-        <!-- Mode Filter Section -->
-        <div class="mode-filter-section">
-            <h3>Filter by Mode</h3>
-            <label>
-                <input type="checkbox" id="filterWork" checked onchange="applyModeFilters()">
-                💼 Work Mode
-            </label>
-            <label>
-                <input type="checkbox" id="filterAdhd" checked onchange="applyModeFilters()">
-                ⚡ ADHD Mode
-            </label>
-            <label>
-                <input type="checkbox" id="filterMemory" checked onchange="applyModeFilters()">
-                🧠 Memory/Caregiver Mode
-            </label>
-        </div>
-
         <!-- Reminder Input Section -->
         <div class="input-section">
             <h2>Create New Reminder</h2>
@@ -188,6 +171,13 @@
 
             <label for="datetime">Due Date & Time:</label>
             <input type="datetime-local" id="datetime">
+
+            <button type="button" id="smartScheduleBtn" class="smart-schedule-btn" onclick="showSmartSchedulingAssistant()"
+                    style="margin: 10px 0; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+               color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex;
+               align-items: center; gap: 8px;">
+                ðŸ¤– Smart Scheduling Assistant
+            </button>
 
             <!-- Priority selector (Work/ADHD modes) -->
             <div id="prioritySection" style="display: none;">
@@ -560,6 +550,32 @@
             </div>
 
             <div class="settings-section">
+                <h4>ðŸ" Reminder Filters</h4>
+                <label>
+                    <input type="checkbox" id="settingsFilterPriority" checked>
+                    Show Priority Filtering
+                </label>
+                <label>
+                    <input type="checkbox" id="settingsShowAllModes" checked>
+                    Show Reminders from All Modes
+                </label>
+                <div id="modeFilterSettings" style="margin-left: 20px; margin-top: 10px;">
+                    <label>
+                        <input type="checkbox" id="filterWork" checked onchange="saveFilterSettings()">
+                        ðŸ'¼ Work Mode Reminders
+                    </label>
+                    <label>
+                        <input type="checkbox" id="filterAdhd" checked onchange="saveFilterSettings()">
+                        âš¡ ADHD Mode Reminders
+                    </label>
+                    <label>
+                        <input type="checkbox" id="filterMemory" checked onchange="saveFilterSettings()">
+                        ðŸ§  Memory/Caregiver Mode Reminders
+                    </label>
+                </div>
+            </div>
+
+            <div class="settings-section">
                 <h4>🔒 Security (Week 10)</h4>
                 <label>
                     <input type="checkbox" id="pinEnabled" onchange="togglePinLock()">
@@ -645,6 +661,23 @@
             <div class="modal-buttons">
                 <button onclick="cancelComment()" class="btn-secondary">Cancel</button>
                 <button onclick="saveComment()" class="btn-primary">Add Comment</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="searchModal" class="modal">
+        <div class="modal-content">
+            <h3>ðŸ" Search Reminders</h3>
+
+            <input type="text" id="searchInput" placeholder="Search by title, description, or tags..."
+                   style="width: 100%; padding: 12px; margin: 10px 0; font-size: 16px; border: 2px solid #ddd; border-radius: 6px;">
+
+            <div id="searchResults" style="margin-top: 20px; max-height: 400px; overflow-y: auto;">
+                <p style="text-align: center; color: #666;">Enter search terms above to find reminders</p>
+            </div>
+
+            <div class="modal-buttons">
+                <button onclick="closeSearch()" class="btn-secondary">Close</button>
             </div>
         </div>
     </div>
@@ -770,7 +803,7 @@
     </script>
 
     <!-- Cordova Scripts -->
-    <script type="text/javascript" src="cordova.js"></script>
+
     <script type="text/javascript" src="js/auth.js"></script>
     <script type="text/javascript" src="js/reminderSync.js"></script>
     <script type="text/javascript" src="js/caregiverAccess.js"></script>
@@ -778,5 +811,23 @@
     <script type="text/javascript" src="js/work.js"></script>
     <script type="text/javascript" src="js/adhd.js"></script>
     <script type="text/javascript" src="js/memory.js"></script>
+
+    <div id="searchModal" class="modal">
+        <div class="modal-content">
+            <h3>ðŸ" Search Reminders</h3>
+
+            <input type="text" id="searchInput" placeholder="Search by title, description, or tags..."
+                   style="width: 100%; padding: 12px; margin: 10px 0; font-size: 16px; border: 2px solid #ddd; border-radius: 6px;">
+
+            <div id="searchResults" style="margin-top: 20px; max-height: 400px; overflow-y: auto;">
+                <p style="text-align: center; color: #666;">Enter search terms above to find reminders</p>
+            </div>
+
+            <div class="modal-buttons">
+                <button onclick="closeSearch()" class="btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
